@@ -335,6 +335,39 @@ function showToast(msg, duration = 3000) {
 })();
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HOW TO PLAY MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+(function () {
+  const overlay  = document.getElementById('rules-modal-overlay');
+  const btnOpen  = document.getElementById('btn-how-to-play');
+  const btnClose = document.getElementById('btn-rules-close');
+  const btnDismiss = document.getElementById('btn-rules-dismiss');
+
+  function openRules() {
+    overlay.classList.remove('hidden');
+    // Force reflow so the transition plays
+    void overlay.offsetHeight;
+    overlay.classList.add('visible');
+  }
+
+  function closeRules() {
+    overlay.classList.remove('visible');
+    overlay.addEventListener('transitionend', () => {
+      overlay.classList.add('hidden');
+    }, { once: true });
+  }
+
+  btnOpen.addEventListener('click', openRules);
+  btnClose.addEventListener('click', closeRules);
+  btnDismiss.addEventListener('click', closeRules);
+
+  // Close on backdrop click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeRules();
+  });
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
 // LANDING SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 document.getElementById('btn-show-create').addEventListener('click', () => showScreen('screen-create'));

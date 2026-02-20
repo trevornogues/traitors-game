@@ -66,8 +66,9 @@ html, body {
   background:
     radial-gradient(ellipse at 50% 0%, rgba(139,105,20,0.18) 0%, transparent 70%),
     linear-gradient(180deg, #0a0a0f 0%, #0d0d18 100%);
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
+  gap: 40px;
   padding: 60px 24px 48px;
 }
 
@@ -1539,13 +1540,14 @@ body[data-theme="queer"] .castle-icon {
 
 body[data-theme="queer"] .title-main {
   color: var(--gold-light);
-  text-shadow:
-    0 0 40px rgba(224,64,251,0.7),
-    0 2px 0 rgba(0,0,0,0.8);
-  background: linear-gradient(135deg, #ff6ec7, #e040fb, #9b59ff);
+  text-shadow: none;
+  background: linear-gradient(135deg, #ffb3e6, #ff3dff, #c47aff, #5dd5fc);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  filter:
+    drop-shadow(0 0 18px rgba(255,61,255,0.75))
+    drop-shadow(0 2px 4px rgba(0,0,0,0.9));
 }
 
 body[data-theme="queer"] .btn-primary {
@@ -1670,6 +1672,219 @@ body[data-theme="queer"] .vote-status-badge.voted {
 /* Give screens a bottom pad so content never hides behind the bar */
 .screen {
   padding-bottom: var(--tip-bar-h);
+}
+
+/* ── How to Play button in the tip bar ─────────────────────────────────── */
+.how-to-play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid rgba(212,160,23,0.22);
+  padding: 5px 12px;
+  border-radius: 30px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: color 180ms, border-color 180ms, background 180ms;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.how-to-play-btn:hover {
+  color: var(--gold-light);
+  border-color: var(--border-gold);
+  background: rgba(212,160,23,0.07);
+}
+
+/* Make the tip-jar-bar flex layout work with two items */
+.tip-jar-bar {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOW TO PLAY — rules modal
+═══════════════════════════════════════════════════════════════════════════ */
+.rules-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  background: rgba(0,0,0,0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 12px calc(var(--tip-bar-h) + 12px);
+  opacity: 0;
+  transition: opacity 250ms ease;
+  pointer-events: none;
+}
+.rules-modal-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.rules-modal-overlay.hidden {
+  display: none !important;
+}
+
+.rules-modal {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100dvh - var(--tip-bar-h) - 32px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 60px rgba(0,0,0,0.7), 0 0 80px rgba(212,160,23,0.06);
+  animation: rulesSlideIn 0.35s cubic-bezier(0.34,1.2,0.64,1) forwards;
+}
+@keyframes rulesSlideIn {
+  from { transform: translateY(24px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+
+.rules-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.rules-modal-title {
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--gold-light);
+  margin: 0;
+}
+.rules-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: color 150ms;
+}
+.rules-modal-close:hover { color: var(--text-dim); }
+
+.rules-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 24px 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rules-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.rules-section:last-child { border-bottom: none; }
+
+.rules-section-title {
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* Role cards (Insiders vs Innocents) */
+.rules-role-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.rules-role-card {
+  border-radius: var(--radius-md);
+  padding: 12px 10px;
+  text-align: center;
+}
+.rules-role-bad {
+  background: rgba(192,57,43,0.12);
+  border: 1px solid rgba(192,57,43,0.35);
+}
+.rules-role-good {
+  background: rgba(26,122,94,0.12);
+  border: 1px solid rgba(26,122,94,0.35);
+}
+.rules-role-label {
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.rules-role-bad .rules-role-label  { color: var(--red-light); }
+.rules-role-good .rules-role-label { color: var(--teal); }
+.rules-role-desc {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+/* Rule lists */
+.rules-list {
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rules-list li {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--text);
+  line-height: 1.5;
+  padding-left: 18px;
+  position: relative;
+}
+.rules-list li::before {
+  content: '·';
+  position: absolute;
+  left: 4px;
+  color: var(--gold-dim);
+  font-size: 1.2rem;
+  line-height: 1.3;
+}
+.rules-list-ordered {
+  counter-reset: rules-counter;
+}
+.rules-list-ordered li {
+  counter-increment: rules-counter;
+  padding-left: 26px;
+}
+.rules-list-ordered li::before {
+  content: counter(rules-counter) '.';
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gold);
+  left: 0;
+  line-height: 1.6;
+}
+.rules-list strong { color: var(--gold-light); font-weight: 600; }
+.rules-list em     { color: var(--text-dim);   font-style: italic; }
+
+.rules-modal-footer {
+  padding: 14px 24px 18px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.rules-modal-footer .btn {
+  width: 100%;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

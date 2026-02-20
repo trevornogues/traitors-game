@@ -135,9 +135,91 @@
        TIP JAR — persistent, always visible at bottom
   ════════════════════════════════════════════════════════════════════ -->
   <div id="tip-jar-bar" class="tip-jar-bar">
+    <button class="how-to-play-btn" id="btn-how-to-play">❓ How to Play</button>
     <a href="https://buymeacoffee.com/tree23" target="_blank" rel="noopener" class="tip-jar-link">
-      ☕ <span class="tip-jar-text">Enjoying the game? Buy me a coffee</span>
+      ☕ <span class="tip-jar-text">Buy me a coffee</span>
     </a>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       HOW TO PLAY MODAL
+  ════════════════════════════════════════════════════════════════════ -->
+  <div id="rules-modal-overlay" class="rules-modal-overlay hidden">
+    <div class="rules-modal">
+      <div class="rules-modal-header">
+        <h2 class="rules-modal-title">📖 How to Play</h2>
+        <button class="rules-modal-close" id="btn-rules-close" aria-label="Close">✕</button>
+      </div>
+      <div class="rules-modal-body">
+
+        <div class="rules-section">
+          <h3 class="rules-section-title">🎯 The Goal</h3>
+          <div class="rules-role-cards">
+            <div class="rules-role-card rules-role-bad">
+              <div class="rules-role-label">THE INSIDERS</div>
+              <div class="rules-role-desc">Secretly eliminate the others and survive to the end.</div>
+            </div>
+            <div class="rules-role-card rules-role-good">
+              <div class="rules-role-label">THE INNOCENTS</div>
+              <div class="rules-role-desc">Find and banish every Insider before they take over.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rules-section">
+          <h3 class="rules-section-title">🔑 Setup</h3>
+          <ul class="rules-list">
+            <li>4–20 players join with the same game code.</li>
+            <li>The host chooses how many Insiders (usually 2–3).</li>
+            <li><strong>Insiders know each other's identities.</strong> Innocents know nothing.</li>
+            <li>Everyone else is an Innocent — the majority team.</li>
+          </ul>
+        </div>
+
+        <div class="rules-section">
+          <h3 class="rules-section-title">🔄 Each Round</h3>
+          <ol class="rules-list rules-list-ordered">
+            <li><strong>Night</strong> — Insiders secretly pick one player to eliminate. All Insiders must agree on the same target and lock in.</li>
+            <li><strong>Morning</strong> — Players check who showed up. A missing player was eliminated in the night. Their role is <em>not</em> revealed.</li>
+            <li><strong>Discussion</strong> — Everyone debates, accuses, and defends. Insiders must blend in and mislead.</li>
+            <li><strong>Banishment Vote</strong> — All living players vote to banish someone. Most votes loses. The banished player's role <strong>is revealed</strong> after a dramatic countdown.</li>
+          </ol>
+        </div>
+
+        <div class="rules-section">
+          <h3 class="rules-section-title">🤝 Recruitment</h3>
+          <ul class="rules-list">
+            <li>When an Insider is banished, the remaining Insiders may get a <strong>one-time chance</strong> to recruit an Innocent to their side during the next night.</li>
+            <li>If there is only <strong>one Insider left</strong> with 5 or more players remaining, they <strong>must</strong> recruit instead of eliminating.</li>
+            <li>A recruited player immediately becomes an Insider and learns who the other Insiders are.</li>
+          </ul>
+        </div>
+
+        <div class="rules-section">
+          <h3 class="rules-section-title">🏁 End Game</h3>
+          <ul class="rules-list">
+            <li>When 5 or fewer players remain, the host can trigger an <strong>End Game Vote</strong>.</li>
+            <li>If <em>all</em> players unanimously vote to end the game, it ends immediately — Insiders win if any survive.</li>
+            <li>If even one player votes to keep banishing, the game continues with another round.</li>
+            <li><strong>Innocents win</strong> if every Insider is banished.</li>
+            <li><strong>Insiders win</strong> if at least one Insider is still alive when the game ends.</li>
+          </ul>
+        </div>
+
+        <div class="rules-section">
+          <h3 class="rules-section-title">💡 Tips</h3>
+          <ul class="rules-list">
+            <li>Innocents: pay attention to who pushes suspicion onto others and who deflects.</li>
+            <li>Insiders: act like an Innocent — vote strategically to avoid drawing suspicion.</li>
+            <li>Runoff votes happen if there's a tie. A second tie lets the host break it.</li>
+          </ul>
+        </div>
+
+      </div>
+      <div class="rules-modal-footer">
+        <button class="btn btn-primary" id="btn-rules-dismiss">Got it — Back to the Game</button>
+      </div>
+    </div>
   </div>
 
   <!-- ════════════════════════════════════════════════════════════════════
