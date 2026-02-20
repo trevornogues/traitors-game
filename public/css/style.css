@@ -333,6 +333,52 @@ html, body {
 .role-badge.traitor { background: rgba(192,57,43,0.3); color: #ff6b6b; border: 1px solid rgba(192,57,43,0.5); }
 .role-badge.faithful { background: rgba(26,122,94,0.3); color: #2ecc9a; border: 1px solid rgba(26,122,94,0.5); }
 
+/* ── Identity Toggle Button ─────────────────────────────────────────────── */
+.btn-identity-toggle {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  padding: 4px 10px;
+  color: var(--text-muted);
+}
+.btn-identity-toggle:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: var(--gold);
+}
+.btn-identity-toggle.identity-is-hidden {
+  background: rgba(192,57,43,0.2);
+  border-color: rgba(192,57,43,0.5);
+}
+
+/* ── Identity Hidden State ──────────────────────────────────────────────── */
+body.identity-hidden #top-player-name,
+body.identity-hidden #top-role-badge {
+  filter: blur(7px);
+  user-select: none;
+  pointer-events: none;
+  transition: filter 0.2s;
+}
+body.identity-hidden .role-reveal-card {
+  filter: blur(14px);
+  user-select: none;
+  pointer-events: none;
+  transition: filter 0.2s;
+}
+#top-player-name, #top-role-badge, .role-reveal-card {
+  transition: filter 0.2s;
+}
+
 /* ── Phase Content ─────────────────────────────────────────────────────── */
 #phase-content {
   flex: 1;

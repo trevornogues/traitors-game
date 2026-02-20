@@ -296,6 +296,20 @@ function showToast(msg, duration = 3000) {
   }, duration);
 }
 
+// ── Identity Toggle ────────────────────────────────────────────────────────
+(function () {
+  const btn = document.getElementById('btn-identity-toggle');
+  let hidden = false;
+
+  btn.addEventListener('click', () => {
+    hidden = !hidden;
+    document.body.classList.toggle('identity-hidden', hidden);
+    btn.textContent = hidden ? 'Reveal Identity' : 'Hide Identity';
+    btn.classList.toggle('identity-is-hidden', hidden);
+    btn.title = hidden ? 'Reveal your identity' : 'Hide your identity';
+  });
+})();
+
 // ─────────────────────────────────────────────────────────────────────────────
 // LANDING SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
