@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>The Traitors</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       LANDING SCREEN
+  ════════════════════════════════════════════════════════════════════ -->
+  <div id="screen-landing" class="screen active">
+    <div class="landing-hero">
+      <div class="castle-icon">🏰</div>
+      <h1 class="title-main">THE<br>TRAITORS</h1>
+      <p class="subtitle">Who among you can be trusted?</p>
+    </div>
+    <div class="landing-buttons">
+      <button class="btn btn-primary btn-large" id="btn-show-create">Host a Game</button>
+      <button class="btn btn-secondary btn-large" id="btn-show-join">Join a Game</button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       CREATE GAME SCREEN
+  ════════════════════════════════════════════════════════════════════ -->
+  <div id="screen-create" class="screen">
+    <div class="screen-header">
+      <button class="btn-back" id="btn-back-create">← Back</button>
+      <h2>Host a Game</h2>
+    </div>
+    <div class="form-container">
+      <div class="form-group">
+        <label for="host-name">Your Name</label>
+        <input type="text" id="host-name" placeholder="Enter your name" maxlength="20" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="num-traitors">Number of Traitors</label>
+        <div class="traitor-picker">
+          <button class="btn-stepper" id="btn-traitors-down">−</button>
+          <span id="traitor-count-display">3</span>
+          <button class="btn-stepper" id="btn-traitors-up">+</button>
+        </div>
+        <p class="hint">Recommended: 2–3 for 6–10 players, 3–4 for 11–20</p>
+      </div>
+      <button class="btn btn-primary btn-large" id="btn-create-game">Create Game</button>
+      <p class="error-msg" id="create-error"></p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       JOIN GAME SCREEN
+  ════════════════════════════════════════════════════════════════════ -->
+  <div id="screen-join" class="screen">
+    <div class="screen-header">
+      <button class="btn-back" id="btn-back-join">← Back</button>
+      <h2>Join a Game</h2>
+    </div>
+    <div class="form-container">
+      <div class="form-group">
+        <label for="join-name">Your Name</label>
+        <input type="text" id="join-name" placeholder="Enter your name" maxlength="20" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="join-code">Game Code</label>
+        <input type="text" id="join-code" placeholder="4-letter code" maxlength="4"
+               autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;font-size:2rem;letter-spacing:0.3em;text-align:center;" />
+      </div>
+      <button class="btn btn-primary btn-large" id="btn-join-game">Join Game</button>
+      <p class="error-msg" id="join-error"></p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       MAIN GAME SCREEN — all phases render here
+  ════════════════════════════════════════════════════════════════════ -->
+  <div id="screen-game" class="screen">
+
+    <!-- Top bar -->
+    <div class="top-bar" id="top-bar">
+      <div class="top-bar-left">
+        <span class="game-code-label">GAME: <strong id="top-game-code">----</strong></span>
+      </div>
+      <div class="top-bar-right">
+        <span id="top-player-name"></span>
+        <span class="role-badge" id="top-role-badge"></span>
+      </div>
+    </div>
+
+    <!-- Phase content — swapped out by JS -->
+    <div id="phase-content"></div>
+
+    <!-- Host control bar (only shown for host) -->
+    <div id="host-bar" class="host-bar hidden">
+      <div class="host-bar-label">👑 HOST CONTROLS</div>
+      <div id="host-controls"></div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       NOTIFICATION TOAST
+  ════════════════════════════════════════════════════════════════════ -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/client.js"></script>
+</body>
+</html>
