@@ -45,10 +45,11 @@ function generateCode() {
 // Game class
 // ─────────────────────────────────────────────────────────────────────────────
 class Game {
-  constructor(hostSocketId, hostName, numTraitors) {
+  constructor(hostSocketId, hostName, numTraitors, theme) {
     this.code = generateCode();
     this.phase = PHASES.LOBBY;
     this.numTraitors = numTraitors;
+    this.theme = theme || 'traitors';
     this.hostSocketId = hostSocketId; // can change if host reconnects
 
     // Players: { socketId, name, role, alive, isHost, eliminated, spectator }
@@ -73,6 +74,12 @@ class Game {
     this.lastMurderVictimName = null;
     this.recruitedThisRound = false;
 
+    // Morning reveal state
+    this.morningRevealOrder = [];   // shuffled socketIds of alive players to walk in
+    this.morningRevealIndex = 0;
+    this.morningRevealStarted = false;
+    this.morningRevealComplete = false;
+
     // Voting state
     this.votes = {};               // voterSocketId -> targetSocketId
     this.voteRevealIndex = 0;
@@ -86,6 +93,16 @@ class Game {
 
     // End-game vote state
     this.endGameVotes = {};        // socketId -> 'END' | 'BANISH'
+
+    // End-game vote reveal (drip)
+    this.endGameVoteRevealOrder = [];
+    this.endGameVoteRevealIndex = 0;
+    this.endGameVoteRevealComplete = false;
+
+    // Game-over role reveal (drip — faithfuls first, traitors last)
+    this.gameOverRevealOrder = [];
+    this.gameOverRevealIndex = 0;
+    this.gameOverRevealComplete = false;
 
     this.round = 0;                // increments each full day cycle
     this.isEndGameMode = false;
@@ -206,6 +223,11 @@ class Game {
     this.traitorSelections = {};
     this.traitorLockIns = new Set();
     this.recruitedThisRound = false;
+    // Reset morning reveal for fresh round
+    this.morningRevealOrder = [];
+    this.morningRevealIndex = 0;
+    this.morningRevealStarted = false;
+    this.morningRevealComplete = false;
     this.phase = PHASES.NIGHT;
   }
 
@@ -284,6 +306,40 @@ class Game {
 
     this.phase = PHASES.MORNING;
     return { ok: true, resolved: true };
+  }
+
+  // ─── Morning reveal ────────────────────────────────────────────────────────
+
+  // Host triggers the dramatic morning reveal (players walk in one by one)
+  startMorningReveal() {
+    if (this.phase !== PHASES.MORNING) return { error: 'Not morning phase' };
+    const alive = this.getAlivePlayers();
+    // Random shuffle of alive players — murdered player is already eliminated so absent
+    this.morningRevealOrder = [...alive]
+      .sort(() => Math.random() - 0.5)
+      .map(p => p.socketId);
+    this.morningRevealIndex = 0;
+    this.morningRevealStarted = true;
+    this.morningRevealComplete = false;
+    return { ok: true };
+  }
+
+  // Returns the next player to "walk in" (called by server timer)
+  getNextMorningReveal() {
+    if (this.morningRevealIndex >= this.morningRevealOrder.length) return null;
+    const playerId = this.morningRevealOrder[this.morningRevealIndex];
+    const player = this.getPlayer(playerId);
+    this.morningRevealIndex++;
+    return {
+      playerId,
+      playerName: player ? player.name : '?',
+      isLast: this.morningRevealIndex >= this.morningRevealOrder.length,
+    };
+  }
+
+  // Called after all players have walked in — unlocks the murder result display
+  completeMorningReveal() {
+    this.morningRevealComplete = true;
   }
 
   // ─── Morning ───────────────────────────────────────────────────────────────
@@ -526,7 +582,50 @@ class Game {
       name: p.name,
       role: p.role,
     }));
+    // Set up drip reveal order: non-traitors first (random), traitors last (random)
+    const nonTraitors = this.players.filter(p => p.role !== ROLES.TRAITOR).sort(() => Math.random() - 0.5);
+    const traitors    = this.players.filter(p => p.role === ROLES.TRAITOR).sort(() => Math.random() - 0.5);
+    this.gameOverRevealOrder = [...nonTraitors, ...traitors].map(p => p.socketId);
+    this.gameOverRevealIndex = 0;
+    this.gameOverRevealComplete = false;
     return { ok: true, gameOver: true, winner };
+  }
+
+  // ─── End-game vote reveal ───────────────────────────────────────────────────
+
+  startEndGameVoteReveal() {
+    const alive = this.getAlivePlayers();
+    this.endGameVoteRevealOrder = [...alive].sort(() => Math.random() - 0.5).map(p => p.socketId);
+    this.endGameVoteRevealIndex = 0;
+    this.endGameVoteRevealComplete = false;
+    return { ok: true };
+  }
+
+  getNextEndGameVoteReveal() {
+    if (this.endGameVoteRevealIndex >= this.endGameVoteRevealOrder.length) return null;
+    const socketId = this.endGameVoteRevealOrder[this.endGameVoteRevealIndex];
+    const player = this.getPlayer(socketId);
+    const vote = this.endGameVotes[socketId];
+    this.endGameVoteRevealIndex++;
+    return {
+      playerName: player ? player.name : '?',
+      vote,
+      isLast: this.endGameVoteRevealIndex >= this.endGameVoteRevealOrder.length,
+    };
+  }
+
+  // ─── Game-over role reveal ──────────────────────────────────────────────────
+
+  getNextGameOverReveal() {
+    if (this.gameOverRevealIndex >= this.gameOverRevealOrder.length) return null;
+    const socketId = this.gameOverRevealOrder[this.gameOverRevealIndex];
+    const player = this.getPlayer(socketId);
+    this.gameOverRevealIndex++;
+    return {
+      playerId: socketId,
+      playerName: player ? player.name : '?',
+      isLast: this.gameOverRevealIndex >= this.gameOverRevealOrder.length,
+    };
   }
 
   // ─── Payload builders ──────────────────────────────────────────────────────
@@ -544,6 +643,7 @@ class Game {
       phase: this.phase,
       round: this.round,
       code: this.code,
+      theme: this.theme,
       myId: socketId,
       myName: player ? player.name : null,
       myRole: role,
@@ -626,8 +726,20 @@ class Game {
       }
 
       case PHASES.MORNING: {
-        payload.lastMurderVictimName = this.lastMurderVictimName;
-        payload.recruitedThisRound = this.recruitedThisRound;
+        payload.morningRevealStarted = this.morningRevealStarted;
+        payload.morningRevealComplete = this.morningRevealComplete;
+        // Only expose who was murdered after the dramatic reveal is finished
+        payload.lastMurderVictimName = this.morningRevealComplete ? this.lastMurderVictimName : null;
+        payload.lastMurderVictimId   = this.morningRevealComplete ? this.lastMurderVictimId   : null;
+        payload.recruitedThisRound   = this.recruitedThisRound;
+        // Players revealed so far (walked in)
+        payload.morningRevealedPlayers = this.morningRevealOrder
+          .slice(0, this.morningRevealIndex)
+          .map(id => {
+            const p = this.getPlayer(id);
+            return { id, name: p ? p.name : '?', isMe: id === socketId };
+          });
+        payload.morningTotalPlayers = this.morningRevealOrder.length;
         // Traitors always see their team during morning (important for newly recruited)
         if (isTraitor) {
           payload.traitorNames = this.getAliveTraitors().map(t => ({
@@ -706,24 +818,41 @@ class Game {
       }
 
       case PHASES.END_GAME_VOTE_REVEAL: {
-        payload.endGameVoteResults = this.getAlivePlayers().map(p => ({
-          name: p.name,
-          vote: this.endGameVotes[p.socketId] || null,
-        }));
+        payload.endGameVoteRevealComplete = this.endGameVoteRevealComplete;
+        // Drip: only expose votes revealed so far
+        payload.endGameRevealedVotes = this.endGameVoteRevealOrder
+          .slice(0, this.endGameVoteRevealIndex)
+          .map(id => {
+            const p = this.getPlayer(id);
+            return { name: p ? p.name : '?', vote: this.endGameVotes[id] || null };
+          });
+        // Full results only available after reveal completes (used by host to resolve)
+        if (this.endGameVoteRevealComplete) {
+          payload.endGameVoteResults = this.getAlivePlayers().map(p => ({
+            name: p.name,
+            vote: this.endGameVotes[p.socketId] || null,
+          }));
+        }
         break;
       }
 
       case PHASES.GAME_OVER: {
         payload.winner = this.winner;
         payload.finalPlayerRoles = this.finalPlayerRoles;
-        // Full role reveal — everyone sees everyone
-        payload.allPlayerRoles = this.players.map(p => ({
-          id: p.socketId,
-          name: p.name,
-          role: p.role,
-          alive: p.alive,
-          eliminatedBy: p.eliminatedBy || null,
-        }));
+        payload.gameOverRevealComplete = this.gameOverRevealComplete;
+        // Drip: only expose roles revealed so far (faithfuls first, traitors last)
+        payload.allPlayerRoles = this.gameOverRevealOrder
+          .slice(0, this.gameOverRevealIndex)
+          .map(id => {
+            const p = this.getPlayer(id);
+            return {
+              id: p ? p.socketId : id,
+              name: p ? p.name : '?',
+              role: p ? p.role : null,
+              alive: p ? p.alive : false,
+              eliminatedBy: p ? (p.eliminatedBy || null) : null,
+            };
+          });
         break;
       }
     }
@@ -737,10 +866,10 @@ class Game {
 // ─────────────────────────────────────────────────────────────────────────────
 const games = new Map(); // code -> Game
 
-function createGame(hostSocketId, hostName, numTraitors) {
+function createGame(hostSocketId, hostName, numTraitors, theme) {
   let code;
   do { code = generateCode(); } while (games.has(code));
-  const game = new Game(hostSocketId, hostName, numTraitors);
+  const game = new Game(hostSocketId, hostName, numTraitors, theme);
   game.code = code;
   games.set(code, game);
   return game;

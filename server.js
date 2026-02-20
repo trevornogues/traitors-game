@@ -39,7 +39,61 @@ function broadcastGameState(game) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Vote reveal timer — drip-reveals votes with delay
 // ─────────────────────────────────────────────────────────────────────────────
-const VOTE_REVEAL_DELAY_MS = 7000; // 7 seconds between each vote
+const VOTE_REVEAL_DELAY_MS         = 7000; // 7 seconds between each banishment vote
+const MORNING_REVEAL_DELAY_MS      = 7000; // 7 seconds between each player walking in
+const ENDGAME_VOTE_REVEAL_DELAY_MS = 7000; // 7 seconds between each end-game vote
+const GAMEOVER_REVEAL_DELAY_MS     = 7000; // 7 seconds between each role reveal
+
+function startMorningRevealTimer(game) {
+  const revealNext = () => {
+    const next = game.getNextMorningReveal();
+    broadcastGameState(game); // show the newly walked-in player
+    if (!next || next.isLast) {
+      // After the final player walks in, pause then mark complete (shows murder result)
+      setTimeout(() => {
+        game.completeMorningReveal();
+        broadcastGameState(game);
+      }, MORNING_REVEAL_DELAY_MS);
+      return;
+    }
+    setTimeout(revealNext, MORNING_REVEAL_DELAY_MS);
+  };
+  // Brief dramatic pause before first player walks in
+  setTimeout(revealNext, 1500);
+}
+
+function startEndGameVoteRevealTimer(game) {
+  const revealNext = () => {
+    const next = game.getNextEndGameVoteReveal();
+    broadcastGameState(game);
+    if (!next || next.isLast) {
+      setTimeout(() => {
+        game.endGameVoteRevealComplete = true;
+        broadcastGameState(game);
+      }, ENDGAME_VOTE_REVEAL_DELAY_MS);
+      return;
+    }
+    setTimeout(revealNext, ENDGAME_VOTE_REVEAL_DELAY_MS);
+  };
+  setTimeout(revealNext, 1500);
+}
+
+function startGameOverRevealTimer(game) {
+  const revealNext = () => {
+    const next = game.getNextGameOverReveal();
+    broadcastGameState(game);
+    if (!next || next.isLast) {
+      setTimeout(() => {
+        game.gameOverRevealComplete = true;
+        broadcastGameState(game);
+      }, GAMEOVER_REVEAL_DELAY_MS);
+      return;
+    }
+    setTimeout(revealNext, GAMEOVER_REVEAL_DELAY_MS);
+  };
+  // Slightly longer initial pause before the first role drops — builds suspense
+  setTimeout(revealNext, 2500);
+}
 
 function startVoteRevealTimer(game, isRunoff = false) {
   const revealNext = () => {
@@ -67,12 +121,14 @@ io.on('connection', (socket) => {
   console.log(`[+] Connected: ${socket.id}`);
 
   // ── CREATE GAME ────────────────────────────────────────────────────────────
-  socket.on('create_game', ({ name, numTraitors }, cb) => {
+  socket.on('create_game', ({ name, numTraitors, theme }, cb) => {
     if (!name || !numTraitors) return cb({ error: 'Missing fields' });
     const n = parseInt(numTraitors);
     if (isNaN(n) || n < 1 || n > 8) return cb({ error: 'Invalid traitor count (1–8)' });
+    const validThemes = ['traitors', 'werewolf', 'mole', 'cowboys', 'queer'];
+    const t = validThemes.includes(theme) ? theme : 'traitors';
 
-    const game = createGame(socket.id, name.trim(), n);
+    const game = createGame(socket.id, name.trim(), n, t);
     socket.join(game.code);
     console.log(`[GAME] Created: ${game.code} by ${name} (${n} traitors)`);
     cb({ ok: true, code: game.code });
@@ -118,6 +174,22 @@ io.on('connection', (socket) => {
     game.proceedToFirstNight();
     cb({ ok: true });
     broadcastGameState(game);
+  });
+
+  // ── HOST: START MORNING REVEAL ─────────────────────────────────────────────
+  socket.on('start_morning_reveal', (_, cb) => {
+    const game = getGameBySocket(socket.id);
+    if (!game) return cb({ error: 'Not in a game' });
+    if (!game.isHost(socket.id)) return cb({ error: 'Not the host' });
+    if (game.phase !== PHASES.MORNING) return cb({ error: 'Wrong phase' });
+    if (game.morningRevealStarted) return cb({ error: 'Reveal already started' });
+
+    const result = game.startMorningReveal();
+    if (result.error) return cb(result);
+
+    cb({ ok: true });
+    broadcastGameState(game);
+    startMorningRevealTimer(game);
   });
 
   // ── TRAITOR: SELECT TARGET ──────────────────────────────────────────────────
@@ -305,6 +377,7 @@ io.on('connection', (socket) => {
 
     if (result.gameOver) {
       broadcastGameState(game);
+      startGameOverRevealTimer(game);
       return;
     }
 
@@ -315,6 +388,7 @@ io.on('connection', (socket) => {
         // Auto-end
         const endResult = game._resolveEndGame();
         broadcastGameState(game);
+        startGameOverRevealTimer(game);
         return;
       }
       game.phase = PHASES.END_GAME_VOTE;
@@ -351,8 +425,10 @@ io.on('connection', (socket) => {
     if (!allVoted) return cb({ error: 'Not all votes in' });
 
     game.phase = PHASES.END_GAME_VOTE_REVEAL;
+    game.startEndGameVoteReveal();
     cb({ ok: true });
     broadcastGameState(game);
+    startEndGameVoteRevealTimer(game);
   });
 
   // ── HOST: RESOLVE END GAME VOTE ────────────────────────────────────────────
@@ -364,6 +440,32 @@ io.on('connection', (socket) => {
     const result = game.resolveEndGameVote();
     cb({ ok: true, result });
     broadcastGameState(game);
+    if (result.gameOver) startGameOverRevealTimer(game);
+  });
+
+  // ── REJOIN GAME (after disconnect/reconnect) ───────────────────────────────
+  socket.on('rejoin_game', ({ code, name }, cb) => {
+    const game = getGame(code?.toUpperCase?.());
+    if (!game) return cb({ error: 'Game not found' });
+
+    // Find player by name (case-insensitive)
+    const player = game.players.find(
+      p => p.name.toLowerCase() === name?.toLowerCase()
+    );
+    if (!player) return cb({ error: 'Player not found in game' });
+
+    // Swap in new socket ID
+    const oldSocketId = player.socketId;
+    player.socketId = socket.id;
+    player.disconnected = false;
+    if (player.isHost) game.hostSocketId = socket.id;
+
+    socket.join(game.code);
+    console.log(`[REJOIN] ${name} rejoined ${game.code} (${oldSocketId} → ${socket.id})`);
+
+    cb({ ok: true });
+    // Send full current state to the rejoining player
+    socket.emit('game_state', game.buildPayloadFor(socket.id));
   });
 
   // ── DISCONNECT ─────────────────────────────────────────────────────────────

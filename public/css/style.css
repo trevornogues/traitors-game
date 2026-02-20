@@ -732,6 +732,102 @@ html, body {
 .morning-quiet { color: var(--teal); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   MORNING REVEAL PHASE
+═══════════════════════════════════════════════════════════════════════════ */
+.morning-arrival-count {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  margin-top: 6px;
+  animation: pulse-dim 1.8s ease-in-out infinite;
+}
+
+.morning-arrival-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.morning-arrival-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  animation: arrivalSlide 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+@keyframes arrivalSlide {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.morning-arrival-card.is-me {
+  border-color: var(--border-gold);
+  background: var(--bg-card2);
+}
+
+.morning-arrival-card.absent {
+  border-color: rgba(192,57,43,0.55);
+  background: rgba(192,57,43,0.08);
+  animation: arrivalSlide 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) forwards,
+             pulse-absent 1.5s ease-in-out 0.5s infinite;
+}
+@keyframes pulse-absent {
+  0%, 100% { border-color: rgba(192,57,43,0.55); }
+  50%       { border-color: rgba(192,57,43,0.9); }
+}
+
+.morning-arrival-icon { font-size: 1.2rem; width: 28px; text-align: center; flex-shrink: 0; }
+.morning-arrival-name { flex: 1; font-weight: 600; font-size: 0.95rem; }
+.morning-arrival-card.absent .morning-arrival-name { color: var(--red-light); }
+
+.morning-arrival-status {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+  font-family: var(--font-body);
+}
+.morning-arrival-card.absent .morning-arrival-status { color: rgba(192,57,43,0.8); }
+
+.morning-next-hint {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.85rem;
+  padding: 14px 0 6px;
+  animation: pulse-dim 2s ease-in-out infinite;
+}
+
+.morning-result-card {
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  margin-top: 4px;
+  animation: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.morning-result-card.murder {
+  background: rgba(192,57,43,0.08);
+  border: 1px solid rgba(192,57,43,0.4);
+}
+.morning-result-card.quiet {
+  background: rgba(26,188,156,0.06);
+  border: 1px solid rgba(26,188,156,0.3);
+}
+.morning-result-desc {
+  font-family: var(--font-body);
+  font-style: italic;
+  color: var(--text-dim);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.morning-result-card.murder .morning-result-desc { color: rgba(231,76,60,0.85); }
+.morning-result-card.quiet  .morning-result-desc { color: rgba(26,188,156,0.85); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
    VOTING PHASE
 ═══════════════════════════════════════════════════════════════════════════ */
 .vote-progress {
@@ -904,6 +1000,21 @@ html, body {
   border-color: var(--red-light);
 }
 .end-vote-btn:disabled { opacity: 0.4; pointer-events: none; }
+
+.endgame-vote-tally {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.evt-end    { color: var(--teal); }
+.evt-banish { color: var(--red-light); }
 
 .end-vote-reveal-row {
   display: flex;
@@ -1085,3 +1196,383 @@ html, body {
 .scroll-section::-webkit-scrollbar { width: 4px; }
 .scroll-section::-webkit-scrollbar-track { background: transparent; }
 .scroll-section::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME PICKER (create screen)
+═══════════════════════════════════════════════════════════════════════════ */
+.theme-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.theme-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 150ms, background 150ms, color 150ms;
+  color: var(--text-muted);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.theme-btn:active { transform: scale(0.97); }
+.theme-btn.active {
+  border-color: var(--gold);
+  background: var(--bg-card2);
+  color: var(--text);
+}
+.theme-btn-icon { font-size: 1.8rem; line-height: 1; }
+.theme-btn-name {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: var(--font-ui);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WEREWOLF THEME  🐺
+   Silver moonlight palette — forest greens, cool silvers
+═══════════════════════════════════════════════════════════════════════════ */
+body[data-theme="werewolf"] {
+  --bg-dark:      #080d08;
+  --bg-mid:       #0e160e;
+  --bg-card:      #141e14;
+  --bg-card2:     #1c281c;
+  --border:       #263826;
+  --border-gold:  #7a8f7a;
+  --gold:         #a8bca8;
+  --gold-light:   #d0e4d0;
+  --gold-dim:     #4a5e4a;
+  --traitor-color:#8b0000;
+  --faithful-color:#2d6a4f;
+}
+
+body[data-theme="werewolf"] html,
+body[data-theme="werewolf"] {
+  background: var(--bg-dark);
+}
+
+body[data-theme="werewolf"] #screen-landing {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(168,188,168,0.15) 0%, transparent 70%),
+    linear-gradient(180deg, #080d08 0%, #0e160e 100%);
+}
+
+body[data-theme="werewolf"] .castle-icon {
+  filter: drop-shadow(0 0 24px rgba(168,188,168,0.45));
+}
+
+body[data-theme="werewolf"] .title-main {
+  color: var(--gold-light);
+  text-shadow:
+    0 0 40px rgba(168,188,168,0.5),
+    0 2px 0 rgba(0,0,0,0.8);
+}
+
+body[data-theme="werewolf"] .btn-primary {
+  background: linear-gradient(135deg, #a8bca8 0%, #4a5e4a 100%);
+  color: #050805;
+  box-shadow: 0 4px 20px rgba(168,188,168,0.3);
+}
+body[data-theme="werewolf"] .btn-primary:hover {
+  box-shadow: 0 4px 28px rgba(168,188,168,0.5);
+}
+
+body[data-theme="werewolf"] .lobby-code {
+  text-shadow: 0 0 30px rgba(168,188,168,0.45);
+}
+
+body[data-theme="werewolf"] .tally-bar-fill {
+  background: linear-gradient(90deg, #4a5e4a, #a8bca8);
+}
+
+body[data-theme="werewolf"] .countdown-fill {
+  stroke: var(--gold);
+}
+
+body[data-theme="werewolf"] .host-bar {
+  border-top-color: var(--border-gold);
+}
+
+body[data-theme="werewolf"] .btn-ghost {
+  color: var(--gold);
+  border-color: var(--border-gold);
+}
+body[data-theme="werewolf"] .btn-ghost:hover {
+  background: rgba(74,94,74,0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOLE THEME  🕵️
+   Electric blue / cyber-spy palette
+═══════════════════════════════════════════════════════════════════════════ */
+body[data-theme="mole"] {
+  --bg-dark:      #060a10;
+  --bg-mid:       #0a1220;
+  --bg-card:      #0f1c2e;
+  --bg-card2:     #162638;
+  --border:       #1e3448;
+  --border-gold:  #1a7ab5;
+  --gold:         #1a9fd4;
+  --gold-light:   #48c5f0;
+  --gold-dim:     #0e5c82;
+  --traitor-color:#c0392b;
+  --faithful-color:#0e8a6e;
+}
+
+body[data-theme="mole"] #screen-landing {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(26,159,212,0.18) 0%, transparent 70%),
+    linear-gradient(180deg, #060a10 0%, #0a1220 100%);
+}
+
+body[data-theme="mole"] .castle-icon {
+  filter: drop-shadow(0 0 24px rgba(26,159,212,0.5));
+}
+
+body[data-theme="mole"] .title-main {
+  color: var(--gold-light);
+  text-shadow:
+    0 0 40px rgba(26,159,212,0.6),
+    0 2px 0 rgba(0,0,0,0.8);
+}
+
+body[data-theme="mole"] .btn-primary {
+  background: linear-gradient(135deg, #1a9fd4 0%, #0e5c82 100%);
+  color: #000e1a;
+  box-shadow: 0 4px 20px rgba(26,159,212,0.35);
+}
+body[data-theme="mole"] .btn-primary:hover {
+  box-shadow: 0 4px 28px rgba(26,159,212,0.55);
+}
+
+body[data-theme="mole"] .lobby-code {
+  text-shadow: 0 0 30px rgba(26,159,212,0.5);
+}
+
+body[data-theme="mole"] .tally-bar-fill {
+  background: linear-gradient(90deg, #0e5c82, #1a9fd4);
+}
+
+body[data-theme="mole"] .countdown-fill {
+  stroke: var(--gold);
+}
+
+body[data-theme="mole"] .host-bar {
+  border-top-color: var(--border-gold);
+}
+
+body[data-theme="mole"] .btn-ghost {
+  color: var(--gold);
+  border-color: var(--border-gold);
+}
+body[data-theme="mole"] .btn-ghost:hover {
+  background: rgba(14,92,130,0.2);
+}
+
+body[data-theme="mole"] .vote-progress-fill {
+  background: var(--gold);
+}
+
+body[data-theme="mole"] .toast {
+  border-color: var(--border-gold);
+  color: var(--gold-light);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COWBOYS VS ALIENS THEME  🤠👽
+   Desert sunset palette — burnt orange, dusty gold, warm darks
+═══════════════════════════════════════════════════════════════════════════ */
+body[data-theme="cowboys"] {
+  --bg-dark:      #0d0800;
+  --bg-mid:       #180e00;
+  --bg-card:      #201400;
+  --bg-card2:     #2c1c00;
+  --border:       #3e2800;
+  --border-gold:  #a06400;
+  --gold:         #d4820a;
+  --gold-light:   #f0a030;
+  --gold-dim:     #7a4800;
+  --traitor-color:#3a8a2a;
+  --faithful-color:#1a5a8e;
+}
+
+body[data-theme="cowboys"] #screen-landing {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(212,130,10,0.22) 0%, transparent 70%),
+    linear-gradient(180deg, #0d0800 0%, #180e00 100%);
+}
+
+body[data-theme="cowboys"] .castle-icon {
+  filter: drop-shadow(0 0 24px rgba(212,130,10,0.5));
+}
+
+body[data-theme="cowboys"] .title-main {
+  color: var(--gold-light);
+  text-shadow:
+    0 0 40px rgba(212,130,10,0.6),
+    0 2px 0 rgba(0,0,0,0.8);
+}
+
+body[data-theme="cowboys"] .btn-primary {
+  background: linear-gradient(135deg, #d4820a 0%, #7a4800 100%);
+  color: #0d0500;
+  box-shadow: 0 4px 20px rgba(212,130,10,0.35);
+}
+body[data-theme="cowboys"] .btn-primary:hover {
+  box-shadow: 0 4px 28px rgba(212,130,10,0.55);
+}
+
+body[data-theme="cowboys"] .lobby-code {
+  text-shadow: 0 0 30px rgba(212,130,10,0.5);
+}
+
+body[data-theme="cowboys"] .tally-bar-fill {
+  background: linear-gradient(90deg, #7a4800, #d4820a);
+}
+
+body[data-theme="cowboys"] .countdown-fill { stroke: var(--gold); }
+body[data-theme="cowboys"] .host-bar { border-top-color: var(--border-gold); }
+
+body[data-theme="cowboys"] .btn-ghost {
+  color: var(--gold);
+  border-color: var(--border-gold);
+}
+body[data-theme="cowboys"] .btn-ghost:hover {
+  background: rgba(122,72,0,0.2);
+}
+
+/* alien green for ALIEN role badge (traitor slot) */
+body[data-theme="cowboys"] .role-badge.traitor {
+  background: rgba(58,138,42,0.25);
+  color: #7ddd60;
+  border: 1px solid rgba(58,138,42,0.5);
+}
+body[data-theme="cowboys"] .role-badge.faithful {
+  background: rgba(26,90,142,0.25);
+  color: #5ab0f0;
+  border: 1px solid rgba(26,90,142,0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   QUEERS VS STRAIGHTS THEME  🏳️‍🌈
+   Hot pink / pride palette — magenta, purple, vibrant darks
+═══════════════════════════════════════════════════════════════════════════ */
+body[data-theme="queer"] {
+  --bg-dark:      #0c0012;
+  --bg-mid:       #160020;
+  --bg-card:      #1e0030;
+  --bg-card2:     #280042;
+  --border:       #3d0060;
+  --border-gold:  #aa00cc;
+  --gold:         #e040fb;
+  --gold-light:   #f090ff;
+  --gold-dim:     #8000a8;
+  --traitor-color:#c0392b;
+  --faithful-color:#1a7a5e;
+}
+
+body[data-theme="queer"] #screen-landing {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(224,64,251,0.2) 0%, transparent 70%),
+    linear-gradient(180deg, #0c0012 0%, #160020 100%);
+}
+
+body[data-theme="queer"] .castle-icon {
+  filter: drop-shadow(0 0 28px rgba(224,64,251,0.6));
+}
+
+body[data-theme="queer"] .title-main {
+  color: var(--gold-light);
+  text-shadow:
+    0 0 40px rgba(224,64,251,0.7),
+    0 2px 0 rgba(0,0,0,0.8);
+  background: linear-gradient(135deg, #ff6ec7, #e040fb, #9b59ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+body[data-theme="queer"] .btn-primary {
+  background: linear-gradient(135deg, #e040fb 0%, #8000a8 100%);
+  color: #0c0012;
+  box-shadow: 0 4px 20px rgba(224,64,251,0.4);
+}
+body[data-theme="queer"] .btn-primary:hover {
+  box-shadow: 0 4px 28px rgba(224,64,251,0.65);
+}
+
+body[data-theme="queer"] .lobby-code {
+  text-shadow: 0 0 30px rgba(224,64,251,0.6);
+  background: linear-gradient(135deg, #ff6ec7, #e040fb, #9b59ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+body[data-theme="queer"] .tally-bar-fill {
+  background: linear-gradient(90deg, #8000a8, #e040fb);
+}
+
+body[data-theme="queer"] .countdown-fill { stroke: var(--gold); }
+body[data-theme="queer"] .host-bar { border-top-color: var(--border-gold); }
+
+body[data-theme="queer"] .btn-ghost {
+  color: var(--gold);
+  border-color: var(--border-gold);
+}
+body[data-theme="queer"] .btn-ghost:hover {
+  background: rgba(128,0,168,0.2);
+}
+
+body[data-theme="queer"] .vote-progress-fill {
+  background: linear-gradient(90deg, #8000a8, #e040fb);
+}
+
+/* QUEER (faithful) = vibrant pink badge; STRAIGHT (traitor) = boring gray */
+body[data-theme="queer"] .role-badge.faithful {
+  background: rgba(224,64,251,0.25);
+  color: #f090ff;
+  border: 1px solid rgba(224,64,251,0.5);
+}
+body[data-theme="queer"] .role-badge.traitor {
+  background: rgba(120,120,120,0.2);
+  color: #a0a0a0;
+  border: 1px solid rgba(120,120,120,0.4);
+}
+
+/* game-over faithful = rainbow gradient for queer win */
+body[data-theme="queer"] .game-over-winner.faithful {
+  background: linear-gradient(135deg, #ff6ec7, #e040fb, #9b59ff, #56cffc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+}
+
+body[data-theme="queer"] .toast {
+  border-color: var(--border-gold);
+  color: var(--gold-light);
+}
+
+body[data-theme="queer"] .phase-title {
+  color: var(--gold-light);
+}
+
+body[data-theme="queer"] .vote-status-badge.waiting {
+  background: rgba(128,0,168,0.15);
+  color: var(--gold);
+  border: 1px solid var(--border-gold);
+}
+body[data-theme="queer"] .vote-status-badge.voted {
+  background: rgba(26,188,156,0.15);
+  color: var(--teal);
+  border: 1px solid rgba(26,188,156,0.4);
+}

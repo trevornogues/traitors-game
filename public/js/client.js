@@ -4,12 +4,277 @@
 
 const socket = io();
 
+// ── Themes ─────────────────────────────────────────────────────────────────
+const THEMES = {
+  traitors: {
+    id: 'traitors',
+    // Landing
+    landingIcon: '🏰',
+    landingTitle: 'THE<br>TRAITORS',
+    landingSubtitle: 'Who among you can be trusted?',
+    // Roles
+    traitorName: 'TRAITOR',
+    faithfulName: 'FAITHFUL',
+    traitorIcon: '🗡️',
+    faithfulIcon: '🛡️',
+    traitorDesc: "Eliminate the Faithful. Stay hidden. Claim the prize.",
+    faithfulDesc: "Find the Traitors among you. Expose them before it's too late.",
+    // Lobby
+    lobbyTitle: 'The Castle Awaits',
+    // Night
+    nightTitle: 'Night Falls',
+    nightIcon: '🌙',
+    nightEyebrow: 'Traitors Only',
+    nightWaiting: 'The Traitors gather in secret...',
+    nightWaitingNote: 'Sleep well. If you can.',
+    fellowLabel: 'Fellow Traitors',
+    murderTitle: '🗡️ Choose Your Victim',
+    recruitTitle: '🤝 Choose Your Recruit',
+    murderBanner: 'MURDER NIGHT',
+    recruitBanner: 'RECRUITMENT NIGHT',
+    // Morning
+    morningPendingTitle: 'The Night Has Ended',
+    morningPendingSubtitle: 'Everyone makes their way to breakfast...',
+    morningArrivalText: 'came down for breakfast',
+    morningAbsentText: 'never came down',
+    morningQuietTitle: 'A Quiet Night',
+    morningQuietDesc: 'The castle stirs. Everyone emerges for breakfast.<br>No one was murdered in the night.',
+    morningMurderTitle: 'A Dark Morning',
+    morningMurderDesc: 'did not come down for breakfast.<br>They were murdered in the night.',
+    // Round Table
+    roundTableTitle: 'The Round Table',
+    roundTableSubtitle: 'Discuss. Debate. Decide.',
+    // Voting
+    voteEyebrow: 'Banishment Vote',
+    // Banishment
+    banishmentLabel: 'Banishment',
+    banishedDesc: 'has been banished from the castle.',
+    banishedMeDesc: 'You have been banished from the castle.',
+    // End game
+    endGameFaithfulLabel: 'All Faithful',
+    endGameTraitorLabel: 'Any Traitor among you',
+    // Game over
+    traitorWin: 'THE TRAITORS WIN',
+    faithfulWin: 'THE FAITHFUL WIN',
+    traitorWinDesc: 'The Traitors outlasted the Faithful and claim the prize.',
+    faithfulWinDesc: 'The Faithful rooted out every last Traitor.',
+    // Recruited
+    recruitedTitle: "You've Been Recruited!",
+    recruitedDesc: 'The Traitors have chosen you. You are now one of them.<br>Keep this secret.',
+    fellowTraitorsLabel: 'Your Fellow Traitors',
+  },
+  werewolf: {
+    id: 'werewolf',
+    landingIcon: '🐺',
+    landingTitle: 'WERE-<br>WOLVES',
+    landingSubtitle: 'The wolves lurk among the villagers...',
+    traitorName: 'WOLF',
+    faithfulName: 'VILLAGER',
+    traitorIcon: '🐺',
+    faithfulIcon: '🏘️',
+    traitorDesc: "Devour the Villagers. Stay hidden. Claim the night.",
+    faithfulDesc: "Hunt the wolves among you. Unmask them before dawn.",
+    lobbyTitle: 'The Village Gathers',
+    nightTitle: 'Night Descends',
+    nightIcon: '🌕',
+    nightEyebrow: 'Wolves Only',
+    nightWaiting: 'The wolves prowl the darkness...',
+    nightWaitingNote: 'Bar your doors. Stay inside.',
+    fellowLabel: 'Your Pack',
+    murderTitle: '🐺 Choose Your Prey',
+    recruitTitle: '🤝 Turn a Villager',
+    murderBanner: 'HUNT NIGHT',
+    recruitBanner: 'TURNING NIGHT',
+    morningPendingTitle: 'Darkness Fades',
+    morningPendingSubtitle: 'The villagers emerge from their homes...',
+    morningArrivalText: 'emerged at dawn',
+    morningAbsentText: 'never emerged',
+    morningQuietTitle: 'A Safe Night',
+    morningQuietDesc: 'The village wakes unharmed. The wolves stayed their hunger.<br>No one was taken.',
+    morningMurderTitle: 'A Grim Morning',
+    morningMurderDesc: 'was found dead at the edge of the forest.<br>The wolves struck in the night.',
+    roundTableTitle: 'The Village Square',
+    roundTableSubtitle: 'Accuse. Argue. Exile.',
+    voteEyebrow: 'Exile Vote',
+    banishmentLabel: 'Exile',
+    banishedDesc: 'has been driven from the village.',
+    banishedMeDesc: 'You have been driven from the village.',
+    endGameFaithfulLabel: 'All Villagers',
+    endGameTraitorLabel: 'Any Wolf among you',
+    traitorWin: 'THE WOLVES WIN',
+    faithfulWin: 'THE VILLAGE WINS',
+    traitorWinDesc: 'The wolves devoured the village from within.',
+    faithfulWinDesc: 'The villagers drove out every last wolf.',
+    recruitedTitle: "You've Been Turned!",
+    recruitedDesc: 'The pack has accepted you. You run with the wolves now.<br>Keep your secret.',
+    fellowTraitorsLabel: 'Your Pack',
+  },
+  mole: {
+    id: 'mole',
+    landingIcon: '🕵️',
+    landingTitle: 'THE<br>MOLE',
+    landingSubtitle: 'Someone among you is feeding intel to the enemy...',
+    traitorName: 'MOLE',
+    faithfulName: 'AGENT',
+    traitorIcon: '🔪',
+    faithfulIcon: '🔍',
+    traitorDesc: "Eliminate the Agents. Maintain cover. Steal the prize.",
+    faithfulDesc: "Expose the mole before the mission is compromised.",
+    lobbyTitle: 'Mission Briefing',
+    nightTitle: 'Lights Out',
+    nightIcon: '🔦',
+    nightEyebrow: 'Moles Only',
+    nightWaiting: 'The moles are making their move...',
+    nightWaitingNote: 'Stay alert. Trust no one.',
+    fellowLabel: 'Your Network',
+    murderTitle: '🔪 Eliminate a Target',
+    recruitTitle: '🤝 Flip an Agent',
+    murderBanner: 'ELIMINATION NIGHT',
+    recruitBanner: 'DEFECTION NIGHT',
+    morningPendingTitle: 'Comms Restored',
+    morningPendingSubtitle: 'Agents checking in from the field...',
+    morningArrivalText: 'reported in',
+    morningAbsentText: 'went dark',
+    morningQuietTitle: 'No Casualties',
+    morningQuietDesc: 'All agents report in. The moles held off tonight.<br>Everyone is accounted for.',
+    morningMurderTitle: 'Agent Down',
+    morningMurderDesc: 'has gone dark.<br>They were eliminated in the night.',
+    roundTableTitle: 'The Debrief',
+    roundTableSubtitle: 'Interrogate. Deduce. Decide.',
+    voteEyebrow: 'Elimination Vote',
+    banishmentLabel: 'Extraction',
+    banishedDesc: 'has been extracted from the mission.',
+    banishedMeDesc: 'You have been extracted from the mission.',
+    endGameFaithfulLabel: 'All Agents',
+    endGameTraitorLabel: 'Any Mole among you',
+    traitorWin: 'THE MOLE WINS',
+    faithfulWin: 'THE AGENTS WIN',
+    traitorWinDesc: 'The mole compromised the mission from the inside.',
+    faithfulWinDesc: 'The agents exposed every last mole.',
+    recruitedTitle: "You've Been Flipped!",
+    recruitedDesc: 'The network has turned you. You now work against your former team.<br>Maintain your cover.',
+    fellowTraitorsLabel: 'Your Network',
+  },
+
+  cowboys: {
+    id: 'cowboys',
+    landingIcon: '🤠',
+    landingTitle: 'COWBOYS<br>VS ALIENS',
+    landingSubtitle: "Something out there ain't from around here...",
+    traitorName: 'ALIEN',
+    faithfulName: 'COWBOY',
+    traitorIcon: '👽',
+    faithfulIcon: '🤠',
+    traitorDesc: "Infiltrate the ranch. Stay hidden. Abduct them all.",
+    faithfulDesc: "Root out the aliens before they take over the whole dang ranch.",
+    lobbyTitle: 'The Ranch Gathers',
+    nightTitle: 'The Night Sky',
+    nightIcon: '🛸',
+    nightEyebrow: 'Aliens Only',
+    nightWaiting: 'The aliens are plotting their next abduction...',
+    nightWaitingNote: "Keep yer eyes on the sky, partner.",
+    fellowLabel: 'Your Alien Pod',
+    murderTitle: '👽 Choose Your Abductee',
+    recruitTitle: '🛸 Convert a Cowboy',
+    murderBanner: 'ABDUCTION NIGHT',
+    recruitBanner: 'CONVERSION NIGHT',
+    morningPendingTitle: 'Sunrise Over the Ranch',
+    morningPendingSubtitle: "Cowboys makin' their way to the fire...",
+    morningArrivalText: 'saddled up',
+    morningAbsentText: "never showed up",
+    morningQuietTitle: 'Clear Skies',
+    morningQuietDesc: "The ranch stirs. Everyone saddles up for breakfast.<br>No one was abducted last night.",
+    morningMurderTitle: 'Gone Missing',
+    morningMurderDesc: "ain't showed up for the morning ride.<br>They were taken in the night.",
+    roundTableTitle: 'The Roundup',
+    roundTableSubtitle: 'Wrangle. Accuse. Banish.',
+    voteEyebrow: 'Banishment Vote',
+    banishmentLabel: 'Banishment',
+    banishedDesc: 'has been run off the ranch.',
+    banishedMeDesc: 'You have been run off the ranch.',
+    endGameFaithfulLabel: 'All Cowboys',
+    endGameTraitorLabel: 'Any Alien among you',
+    traitorWin: 'THE ALIENS WIN',
+    faithfulWin: 'THE COWBOYS WIN',
+    traitorWinDesc: 'The aliens infiltrated the ranch and took over. Yeehaw... or whatever aliens say.',
+    faithfulWinDesc: 'The cowboys ran every last alien off the land. This town is ours.',
+    recruitedTitle: "You've Been Converted! 👽",
+    recruitedDesc: "The aliens got to you. You're one of them now.<br>Act natural, pardner.",
+    fellowTraitorsLabel: 'Your Alien Pod',
+  },
+
+  queer: {
+    id: 'queer',
+    landingIcon: '🏳️‍🌈',
+    landingTitle: 'THE<br>GAYS',
+    landingSubtitle: "The straights have infiltrated the group chat...",
+    traitorName: 'STRAIGHT',
+    faithfulName: 'QUEER',
+    traitorIcon: '😐',
+    faithfulIcon: '🏳️‍🌈',
+    traitorDesc: "Blend in. Kill the vibe. Slay the queers.",
+    faithfulDesc: "Sniff out the straights before they ruin everything, bestie.",
+    lobbyTitle: 'The Group Chat Loads',
+    nightTitle: 'After Dark 🌙',
+    nightIcon: '💅🏻',
+    nightEyebrow: 'Straights Only',
+    nightWaiting: 'The straights are being boring somewhere...',
+    nightWaitingNote: 'Slay while they scheme. 💅🏻',
+    fellowLabel: 'Fellow Straights',
+    murderTitle: '💅🏻 Choose Who Gets Slayed',
+    recruitTitle: '😐 Straighten Someone',
+    murderBanner: 'SLAY NIGHT 💅🏻',
+    recruitBanner: 'STRAIGHTENING NIGHT',
+    morningPendingTitle: 'Morning Energy ✨',
+    morningPendingSubtitle: 'The girls are logging on...',
+    morningArrivalText: 'appeared ✨',
+    morningAbsentText: "didn't appear 💔",
+    morningQuietTitle: 'All Thriving ✨',
+    morningQuietDesc: "Everyone wakes up unbothered and thriving.<br>No one got slayed last night.",
+    morningMurderTitle: 'Sis Got Slayed 💅🏻',
+    morningMurderDesc: "did not survive the night.<br>Absolutely slayed, no notes.",
+    roundTableTitle: 'The Vibe Check',
+    roundTableSubtitle: 'Spill. Accuse. Cancel.',
+    voteEyebrow: 'Cancellation Vote',
+    banishmentLabel: 'Cancellation',
+    banishedDesc: 'has been cancelled. Periodt.',
+    banishedMeDesc: 'You have been cancelled. Bestie... 😭',
+    endGameFaithfulLabel: 'All Queers',
+    endGameTraitorLabel: 'Any Straight among you',
+    traitorWin: 'THE STRAIGHTS WIN',
+    faithfulWin: 'THE QUEERS WIN',
+    traitorWinDesc: 'The straights infiltrated the group and killed the vibe. Tragic.',
+    faithfulWinDesc: 'The queers sniffed out every last straight. We love to see it. 🏳️‍🌈',
+    recruitedTitle: "You've Been Straightened! 😱",
+    recruitedDesc: "The straights got to you. You're one of them now.<br>Keep your khakis on.",
+    fellowTraitorsLabel: 'Fellow Straights',
+  },
+};
+
+let currentTheme = THEMES.traitors;
+
+function applyTheme(themeId) {
+  const theme = THEMES[themeId] || THEMES.traitors;
+  currentTheme = theme;
+  document.body.dataset.theme = theme.id;
+  // Update landing screen
+  const iconEl = document.getElementById('landing-icon');
+  const titleEl = document.getElementById('landing-title');
+  const subtitleEl = document.getElementById('landing-subtitle');
+  if (iconEl) iconEl.textContent = theme.landingIcon;
+  if (titleEl) titleEl.innerHTML = theme.landingTitle;
+  if (subtitleEl) subtitleEl.textContent = theme.landingSubtitle;
+}
+
 // ── State ──────────────────────────────────────────────────────────────────
 let myId = null;
+let myName = null;   // stored for reconnection
 let gameCode = null;
 let lastPhase = null;
 let countdownInterval = null;
 let recruitedShown = false; // track if we've shown the "you're recruited!" screen
+let localVoteSelection = null;    // pending vote selection before lock-in
+let localRunoffSelection = null;  // pending runoff vote selection before lock-in
 
 // ── Screens ────────────────────────────────────────────────────────────────
 function showScreen(id) {
@@ -43,6 +308,8 @@ document.getElementById('btn-back-join').addEventListener('click', () => showScr
 // CREATE GAME
 // ─────────────────────────────────────────────────────────────────────────────
 let traitorCount = 3;
+let selectedTheme = 'traitors';
+
 function updateTraitorDisplay() {
   document.getElementById('traitor-count-display').textContent = traitorCount;
 }
@@ -53,15 +320,26 @@ document.getElementById('btn-traitors-up').addEventListener('click', () => {
   if (traitorCount < 8) { traitorCount++; updateTraitorDisplay(); }
 });
 
+// Theme picker
+document.querySelectorAll('.theme-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectedTheme = btn.dataset.theme;
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyTheme(selectedTheme);
+  });
+});
+
 document.getElementById('btn-create-game').addEventListener('click', () => {
   const name = document.getElementById('host-name').value.trim();
   const errEl = document.getElementById('create-error');
   errEl.textContent = '';
   if (!name) { errEl.textContent = 'Please enter your name.'; return; }
 
-  socket.emit('create_game', { name, numTraitors: traitorCount }, (res) => {
+  socket.emit('create_game', { name, numTraitors: traitorCount, theme: selectedTheme }, (res) => {
     if (res.error) { errEl.textContent = res.error; return; }
     gameCode = res.code;
+    myName = name;
     showScreen('screen-game');
   });
 });
@@ -84,6 +362,7 @@ document.getElementById('btn-join-game').addEventListener('click', () => {
   socket.emit('join_game', { name, code }, (res) => {
     if (res.error) { errEl.textContent = res.error; return; }
     gameCode = res.code;
+    myName = name;
     showScreen('screen-game');
   });
 });
@@ -99,6 +378,8 @@ document.getElementById('btn-join-game').addEventListener('click', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 socket.on('game_state', (state) => {
   myId = state.myId;
+  if (state.myName) myName = state.myName;
+  if (state.theme) applyTheme(state.theme);
 
   // Update top bar
   document.getElementById('top-game-code').textContent = state.code || '----';
@@ -117,13 +398,20 @@ socket.on('game_state', (state) => {
   const phaseChanged = state.phase !== lastPhase;
   lastPhase = state.phase;
 
+  // Clear local vote selections when entering a fresh voting phase
+  if (phaseChanged && state.phase === 'VOTING') localVoteSelection = null;
+  if (phaseChanged && state.phase === 'RUNOFF_VOTING') localRunoffSelection = null;
+
   renderPhase(state, phaseChanged);
 });
 
 function updateRoleBadge(role, alive) {
   const badge = document.getElementById('top-role-badge');
   if (!role) { badge.textContent = ''; badge.className = 'role-badge'; return; }
-  badge.textContent = role;
+  const displayName = role === 'TRAITOR' ? currentTheme.traitorName
+                    : role === 'FAITHFUL' ? currentTheme.faithfulName
+                    : role;
+  badge.textContent = displayName;
   badge.className = 'role-badge ' + role.toLowerCase();
   if (!alive) badge.style.opacity = '0.5';
 }
@@ -161,7 +449,7 @@ function renderLobby(state, content, hostControls) {
   content.innerHTML = `
     <div class="phase-header">
       <div class="phase-eyebrow">Waiting Room</div>
-      <div class="phase-title">The Castle Awaits</div>
+      <div class="phase-title">${currentTheme.lobbyTitle}</div>
     </div>
 
     <div class="lobby-code-display">
@@ -190,7 +478,7 @@ function renderLobby(state, content, hostControls) {
   if (state.isHost) {
     const canStart = players.length >= 4;
     hostControls.innerHTML = `
-      ${state.numTraitors !== undefined ? `<p class="text-center text-muted mb-8" style="font-size:0.8rem">Starting with <strong style="color:var(--gold)">${state.numTraitors}</strong> Traitor${state.numTraitors !== 1 ? 's' : ''}</p>` : ''}
+      ${state.numTraitors !== undefined ? `<p class="text-center text-muted mb-8" style="font-size:0.8rem">Starting with <strong style="color:var(--gold)">${state.numTraitors}</strong> ${currentTheme.traitorName}${state.numTraitors !== 1 ? 's' : ''}</p>` : ''}
       <button class="btn btn-primary btn-large" id="btn-start" ${canStart ? '' : 'disabled'}>
         Start Game (${players.length} players)
       </button>
@@ -217,31 +505,29 @@ function renderRoleReveal(state, content, hostControls) {
     if (others.length > 0) {
       traitorSection = `
         <div class="info-box red mb-16">
-          <div class="traitor-list-label">Your Fellow Traitors</div>
+          <div class="traitor-list-label">${currentTheme.fellowTraitorsLabel}</div>
           ${others.map(t => `
             <div class="traitor-status-row">
-              <span>🗡️</span>
+              <span>${currentTheme.traitorIcon}</span>
               <span class="traitor-status-name">${escHtml(t.name)}</span>
             </div>
           `).join('')}
         </div>
       `;
     } else {
-      traitorSection = `<div class="info-box red mb-16"><p style="color:var(--text-dim);font-style:italic;font-size:0.9rem">You are the lone Traitor. Trust no one.</p></div>`;
+      traitorSection = `<div class="info-box red mb-16"><p style="color:var(--text-dim);font-style:italic;font-size:0.9rem">You are the lone ${currentTheme.traitorName}. Trust no one.</p></div>`;
     }
   }
 
   content.innerHTML = `
     <div class="role-reveal-card">
-      <div class="role-reveal-icon">${isTraitor ? '🗡️' : '🛡️'}</div>
+      <div class="role-reveal-icon">${isTraitor ? currentTheme.traitorIcon : currentTheme.faithfulIcon}</div>
       <div class="role-reveal-label">You are a</div>
       <div class="role-reveal-name ${isTraitor ? 'traitor' : 'faithful'}">
-        ${isTraitor ? 'TRAITOR' : 'FAITHFUL'}
+        ${isTraitor ? currentTheme.traitorName : currentTheme.faithfulName}
       </div>
       <div class="role-reveal-desc">
-        ${isTraitor
-          ? 'Eliminate the Faithful. Stay hidden. Claim the prize.'
-          : 'Find the Traitors among you. Expose them before it\'s too late.'}
+        ${isTraitor ? currentTheme.traitorDesc : currentTheme.faithfulDesc}
       </div>
       ${traitorSection}
       <p class="text-muted" style="font-size:0.85rem;font-style:italic">
@@ -279,40 +565,39 @@ function renderNight(state, content, hostControls, phaseChanged) {
     // ── Faithful waiting screen ─────────────────────────────────────────────
     content.innerHTML = `
       <div class="night-waiting">
-        <div class="night-waiting-icon">🌙</div>
-        <div class="phase-title mb-16">The Night Falls</div>
+        <div class="night-waiting-icon">${currentTheme.nightIcon}</div>
+        <div class="phase-title mb-16">${currentTheme.nightTitle}</div>
         <p class="night-waiting-text">
-          The Traitors gather in secret...<br>
-          <span style="color:var(--text-muted);font-size:0.9rem">Sleep well. If you can.</span>
+          ${currentTheme.nightWaiting}<br>
+          <span style="color:var(--text-muted);font-size:0.9rem">${currentTheme.nightWaitingNote}</span>
         </p>
       </div>
     `;
     if (state.isHost) {
-      hostControls.innerHTML = `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Waiting for Traitors to make their decision...</p>`;
+      hostControls.innerHTML = `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Waiting for ${currentTheme.traitorName}s to make their decision...</p>`;
     }
     return;
   }
 
   // ── Traitor night screen ────────────────────────────────────────────────
-  const modeLabel = isMurder ? 'MURDER NIGHT' : 'RECRUITMENT NIGHT';
+  const modeLabel = isMurder ? currentTheme.murderBanner : currentTheme.recruitBanner;
   const modeClass = isMurder ? 'murder' : 'recruit';
-  const actionVerb = isMurder ? 'murder' : 'recruit';
-  const actionTitle = isMurder ? '🗡️ Choose Your Victim' : '🤝 Choose Your Recruit';
+  const actionTitle = isMurder ? currentTheme.murderTitle : currentTheme.recruitTitle;
 
   // Night mode choice (only if canChooseNightMode)
   let modeChoiceHtml = '';
   if (state.canChooseNightMode && nightMode === 'RECRUIT') {
     modeChoiceHtml = `
       <div class="night-choice-row mb-16">
-        <button class="btn btn-danger" id="btn-choose-murder">🗡️ Murder</button>
-        <button class="btn btn-ghost" id="btn-choose-recruit">🤝 Recruit</button>
+        <button class="btn btn-danger" id="btn-choose-murder">${currentTheme.traitorIcon} ${currentTheme.murderBanner.split(' ')[0]}</button>
+        <button class="btn btn-ghost" id="btn-choose-recruit">🤝 ${currentTheme.recruitBanner.split(' ')[0]}</button>
       </div>
     `;
   } else if (state.canChooseNightMode && nightMode === 'MURDER') {
     modeChoiceHtml = `
       <div class="night-choice-row mb-16">
-        <button class="btn btn-danger" id="btn-choose-murder" style="border:2px solid var(--red)">🗡️ Murder</button>
-        <button class="btn btn-ghost" id="btn-choose-recruit">🤝 Recruit</button>
+        <button class="btn btn-danger" id="btn-choose-murder" style="border:2px solid var(--red)">${currentTheme.traitorIcon} ${currentTheme.murderBanner.split(' ')[0]}</button>
+        <button class="btn btn-ghost" id="btn-choose-recruit">🤝 ${currentTheme.recruitBanner.split(' ')[0]}</button>
       </div>
     `;
   }
@@ -340,7 +625,7 @@ function renderNight(state, content, hostControls, phaseChanged) {
     const lockIcon = t.lockedIn ? ' 🔒' : '';
     return `
       <div class="traitor-status-row">
-        <span>${t.isMe ? '👤' : '🗡️'}</span>
+        <span>${t.isMe ? '👤' : currentTheme.traitorIcon}</span>
         <span class="traitor-status-name">${escHtml(t.name)}${t.isMe ? ' (You)' : ''}</span>
         <span class="traitor-status-pick ${statusClass}">${t.selectedTargetId ? escHtml(pick) : 'Deciding...'} ${lockIcon}</span>
       </div>
@@ -349,8 +634,8 @@ function renderNight(state, content, hostControls, phaseChanged) {
 
   content.innerHTML = `
     <div class="phase-header">
-      <div class="phase-eyebrow">Traitors Only</div>
-      <div class="phase-title">Night Falls</div>
+      <div class="phase-eyebrow">${currentTheme.nightEyebrow}</div>
+      <div class="phase-title">${currentTheme.nightTitle}</div>
     </div>
 
     <div class="night-mode-banner ${modeClass}">${modeLabel}</div>
@@ -358,7 +643,7 @@ function renderNight(state, content, hostControls, phaseChanged) {
     ${modeChoiceHtml}
 
     <div class="info-box mb-16">
-      <div class="section-label mb-8">Fellow Traitors</div>
+      <div class="section-label mb-8">${currentTheme.fellowLabel}</div>
       ${traitorRows}
     </div>
 
@@ -416,94 +701,160 @@ function renderNight(state, content, hostControls, phaseChanged) {
 // ─── MORNING ────────────────────────────────────────────────────────────────
 function renderMorning(state, content, hostControls) {
   const wasRecruited = state.recruitedThisRound;
-  const victim = state.lastMurderVictimName;
+  const victim = state.lastMurderVictimName; // only non-null after reveal completes
+  const revealStarted = state.morningRevealStarted;
+  const revealComplete = state.morningRevealComplete;
+  const revealedPlayers = state.morningRevealedPlayers || [];
+  const totalPlayers = state.morningTotalPlayers || 0;
 
-  // Special: if player is alive AND just became a traitor (recruited), show banner
-  const isNewTraitor = state.myRole === 'TRAITOR' && wasRecruited && !recruitedShown;
-  if (isNewTraitor) recruitedShown = true;
-
-  if (isNewTraitor) {
+  // ── PRE-REVEAL: host hasn't triggered morning yet ─────────────────────────
+  if (!revealStarted) {
     content.innerHTML = `
-      <div class="recruited-banner">
-        <div style="font-size:64px;margin-bottom:16px">🤝</div>
-        <h2>You've Been Recruited!</h2>
-        <p style="color:var(--text-dim);font-family:var(--font-body);font-style:italic;font-size:1.05rem;line-height:1.6;margin-bottom:20px">
-          The Traitors have chosen you. You are now one of them.<br>Keep this secret.
+      <div class="night-waiting">
+        <div class="night-waiting-icon">🌅</div>
+        <div class="phase-title mb-16">${currentTheme.morningPendingTitle}</div>
+        <p class="night-waiting-text">
+          ${currentTheme.morningPendingSubtitle}
         </p>
-        ${(state.traitorNames || []).filter(t => t.id !== myId).length > 0 ? `
-          <div class="info-box red" style="text-align:left">
-            <div class="traitor-list-label mb-8">Your Fellow Traitors</div>
-            ${(state.traitorNames || []).filter(t => t.id !== myId).map(t => `
-              <div class="traitor-status-row">
-                <span>🗡️</span>
-                <span>${escHtml(t.name)}</span>
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
       </div>
     `;
-    // For non-host we still need host to advance
     if (state.isHost) {
       hostControls.innerHTML = `
-        <button class="btn btn-primary btn-large" id="btn-to-round-table">
-          ☀️ Proceed to Round Table
+        <button class="btn btn-primary btn-large" id="btn-begin-morning">
+          🌅 Begin Morning
         </button>
       `;
-      attachRoundTableButton();
+      document.getElementById('btn-begin-morning')?.addEventListener('click', () => {
+        socket.emit('start_morning_reveal', {}, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      });
     }
     return;
   }
 
-  const morningHtml = wasRecruited
-    ? `
-      <div class="morning-reveal">
-        <div class="morning-icon morning-quiet">🌅</div>
-        <div class="morning-headline">A Quiet Night</div>
-        <p class="morning-desc">The castle stirs. Everyone emerges for breakfast.<br>No one was murdered in the night.</p>
+  // ── REVEALING: players walking in one by one ──────────────────────────────
+  // Build the walked-in player card list
+  const playerCardsHtml = revealedPlayers.map(p => `
+    <div class="morning-arrival-card ${p.isMe ? 'is-me' : ''}">
+      <div class="morning-arrival-icon">✅</div>
+      <div class="morning-arrival-name">${escHtml(p.name)}${p.isMe ? ' <span style="color:var(--text-muted);font-size:0.75rem">(You)</span>' : ''}</div>
+      <div class="morning-arrival-status">${currentTheme.morningArrivalText}</div>
+    </div>
+  `).join('');
+
+  // After reveal completes, also show the absent (murdered) player if any
+  let absentCardHtml = '';
+  if (revealComplete && victim) {
+    absentCardHtml = `
+      <div class="morning-arrival-card absent">
+        <div class="morning-arrival-icon">❌</div>
+        <div class="morning-arrival-name">${escHtml(victim)}</div>
+        <div class="morning-arrival-status">${currentTheme.morningAbsentText}</div>
       </div>
-    `
-    : victim
+    `;
+  }
+
+  // Progress label during reveal, headline after complete
+  const headerHtml = revealComplete
     ? `
-      <div class="morning-reveal">
-        <div class="morning-icon">🌅</div>
-        <div class="morning-headline">A Dark Morning</div>
-        <div class="morning-victim-name">${escHtml(victim)}</div>
-        <p class="morning-desc">did not come down for breakfast.<br>They were murdered in the night.</p>
-        <div class="divider"></div>
-        ${buildAliveList(state)}
+      <div class="phase-header">
+        <div class="phase-eyebrow">Morning</div>
+        <div class="phase-title">${victim ? currentTheme.morningMurderTitle : currentTheme.morningQuietTitle}</div>
       </div>
     `
     : `
-      <div class="morning-reveal">
-        <div class="morning-icon">🌅</div>
-        <div class="morning-headline">Morning Breaks</div>
-        <p class="morning-desc">The castle stirs...</p>
+      <div class="phase-header">
+        <div class="phase-eyebrow">Morning</div>
+        <div class="phase-title">${currentTheme.morningPendingTitle}</div>
+        <div class="morning-arrival-count">${revealedPlayers.length} of ${totalPlayers} arrived...</div>
       </div>
     `;
 
-  content.innerHTML = morningHtml;
+  // After complete + murder: show the dramatic victim headline below the list
+  let resultHtml = '';
+  if (revealComplete) {
+    if (victim) {
+      resultHtml = `
+        <div class="morning-result-card murder">
+          <div class="morning-result-desc">${currentTheme.morningMurderDesc}</div>
+        </div>
+      `;
+    } else {
+      resultHtml = `
+        <div class="morning-result-card quiet">
+          <div class="morning-result-desc">${currentTheme.morningQuietDesc}</div>
+        </div>
+      `;
+    }
+  }
 
-  if (state.isHost) {
-    const endGameAvail = state.canTriggerEndGame;
-    hostControls.innerHTML = `
-      <button class="btn btn-primary btn-large" id="btn-to-round-table">
-        ☀️ Proceed to Round Table
-      </button>
-      ${endGameAvail ? `
-        <button class="btn btn-teal btn-large" id="btn-trigger-end-game">
-          🏁 Trigger End Game
-        </button>
+  content.innerHTML = `
+    ${headerHtml}
+    <div class="morning-arrival-list">
+      ${playerCardsHtml}
+      ${absentCardHtml}
+      ${!revealComplete ? `
+        <div class="morning-next-hint">Next arrival soon...</div>
       ` : ''}
-    `;
-    attachRoundTableButton();
-    document.getElementById('btn-trigger-end-game')?.addEventListener('click', () => {
-      if (confirm('Trigger end game mode? No more murders will occur.')) {
-        socket.emit('trigger_end_game', {}, (res) => {
-          if (res.error) showToast('⚠️ ' + res.error);
-        });
-      }
-    });
+    </div>
+    ${resultHtml}
+  `;
+
+  // ── COMPLETE: show recruited banner privately for newly-turned traitors ────
+  if (revealComplete) {
+    const isNewTraitor = state.myRole === 'TRAITOR' && wasRecruited && !recruitedShown;
+    if (isNewTraitor) {
+      recruitedShown = true;
+      content.innerHTML = `
+        <div class="recruited-banner">
+          <div style="font-size:64px;margin-bottom:16px">🤝</div>
+          <h2>${currentTheme.recruitedTitle}</h2>
+          <p style="color:var(--text-dim);font-family:var(--font-body);font-style:italic;font-size:1.05rem;line-height:1.6;margin-bottom:20px">
+            ${currentTheme.recruitedDesc}
+          </p>
+          ${(state.traitorNames || []).filter(t => t.id !== myId).length > 0 ? `
+            <div class="info-box red" style="text-align:left">
+              <div class="traitor-list-label mb-8">${currentTheme.fellowTraitorsLabel}</div>
+              ${(state.traitorNames || []).filter(t => t.id !== myId).map(t => `
+                <div class="traitor-status-row">
+                  <span>${currentTheme.traitorIcon}</span>
+                  <span>${escHtml(t.name)}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // Host controls: Proceed to Round Table (only shown after reveal is done)
+    if (state.isHost) {
+      const endGameAvail = state.canTriggerEndGame;
+      hostControls.innerHTML = `
+        <button class="btn btn-primary btn-large" id="btn-to-round-table">
+          ☀️ Proceed to Round Table
+        </button>
+        ${endGameAvail ? `
+          <button class="btn btn-teal btn-large" id="btn-trigger-end-game">
+            🏁 Trigger End Game
+          </button>
+        ` : ''}
+      `;
+      attachRoundTableButton();
+      document.getElementById('btn-trigger-end-game')?.addEventListener('click', () => {
+        if (confirm('Trigger end game mode? No more murders will occur.')) {
+          socket.emit('trigger_end_game', {}, (res) => {
+            if (res.error) showToast('⚠️ ' + res.error);
+          });
+        }
+      });
+    }
+  } else {
+    // During reveal, host sees a status message (no button — timer runs automatically)
+    if (state.isHost) {
+      hostControls.innerHTML = `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Revealing players... (${revealedPlayers.length}/${totalPlayers})</p>`;
+    }
   }
 }
 
@@ -532,8 +883,8 @@ function renderRoundTable(state, content, hostControls) {
   content.innerHTML = `
     <div class="phase-header">
       <div class="phase-eyebrow">Round ${state.round || ''}</div>
-      <div class="phase-title">The Round Table</div>
-      <div class="phase-subtitle">${state.isEndGameMode ? 'End Game Mode' : 'Discuss. Debate. Decide.'}</div>
+      <div class="phase-title">${currentTheme.roundTableTitle}</div>
+      <div class="phase-subtitle">${state.isEndGameMode ? 'End Game Mode' : currentTheme.roundTableSubtitle}</div>
     </div>
 
     ${state.isEndGameMode ? `
@@ -581,11 +932,13 @@ function renderRoundTable(state, content, hostControls) {
 function renderVoting(state, content, hostControls) {
   const alive = state.alivePlayers || [];
   const hasVoted = state.hasVoted;
-  const myVote = state.myVote;
+
+  // Once locked in, use the server-confirmed vote for display; otherwise local selection
+  const displaySelection = hasVoted ? state.myVote : localVoteSelection;
 
   content.innerHTML = `
     <div class="phase-header">
-      <div class="phase-eyebrow">Banishment Vote</div>
+      <div class="phase-eyebrow">${currentTheme.voteEyebrow}</div>
       <div class="phase-title">Cast Your Vote</div>
     </div>
 
@@ -599,28 +952,47 @@ function renderVoting(state, content, hostControls) {
     ${state.allVoted ? `<div class="all-votes-in-notice">✓ All Votes Are In</div>` : ''}
 
     ${hasVoted
-      ? `<div class="vote-status-badge voted mb-16">✓ Vote Cast</div>`
-      : `<div class="vote-status-badge waiting mb-16">Choose who to banish</div>`
+      ? `<div class="vote-status-badge voted mb-16">✓ Vote Locked In</div>`
+      : displaySelection
+        ? `<div class="vote-status-badge waiting mb-16">Selected — tap Lock In to confirm</div>`
+        : `<div class="vote-status-badge waiting mb-16">Choose who to banish</div>`
     }
 
     <div class="target-list" id="vote-targets">
       ${alive.filter(p => !p.isMe).map(p => `
-        <div class="target-card ${myVote === p.id ? 'selected' : ''}"
+        <div class="target-card ${displaySelection === p.id ? 'selected' : ''}"
              data-id="${p.id}" ${hasVoted ? 'style="pointer-events:none;opacity:0.75"' : ''}>
           <span class="target-name">${escHtml(p.name)}</span>
-          <div class="target-check">${myVote === p.id ? '✓' : ''}</div>
+          <div class="target-check">${displaySelection === p.id ? '✓' : ''}</div>
         </div>
       `).join('')}
     </div>
+
+    ${!hasVoted ? `
+      <div style="margin-top:16px">
+        <button class="btn btn-large ${displaySelection ? 'btn-danger' : ''}" id="btn-lock-vote"
+          ${displaySelection ? '' : 'disabled'}
+          style="${displaySelection ? '' : 'background:var(--bg-card2);color:var(--text-muted);border:1px solid var(--border)'}">
+          🔒 Lock In Vote${displaySelection ? ` — ${escHtml(alive.find(p => p.id === displaySelection)?.name || '')}` : ''}
+        </button>
+      </div>
+    ` : ''}
   `;
 
+  // Tapping a name updates local selection only (no server call)
   if (!hasVoted) {
     document.querySelectorAll('#vote-targets .target-card[data-id]').forEach(card => {
       card.addEventListener('click', () => {
-        const targetId = card.dataset.id;
-        socket.emit('cast_vote', { targetId }, (res) => {
-          if (res.error) showToast('⚠️ ' + res.error);
-        });
+        localVoteSelection = card.dataset.id;
+        renderVoting(state, content, hostControls); // re-render locally to update highlight
+      });
+    });
+
+    // Lock In sends to server
+    document.getElementById('btn-lock-vote')?.addEventListener('click', () => {
+      if (!localVoteSelection) return;
+      socket.emit('cast_vote', { targetId: localVoteSelection }, (res) => {
+        if (res.error) showToast('⚠️ ' + res.error);
       });
     });
   }
@@ -651,7 +1023,7 @@ function renderVoteReveal(state, content, hostControls, isRunoff) {
 
   content.innerHTML = `
     <div class="phase-header">
-      <div class="phase-eyebrow">${isRunoff ? 'Runoff — ' : ''}Vote Reveal</div>
+      <div class="phase-eyebrow">${isRunoff ? 'Runoff — ' : ''}${currentTheme.voteEyebrow}</div>
       <div class="phase-title">${revealComplete ? 'The Verdict' : 'Revealing Votes...'}</div>
     </div>
 
@@ -716,7 +1088,8 @@ function renderVoteReveal(state, content, hostControls, isRunoff) {
 function renderRunoffVoting(state, content, hostControls) {
   const candidates = state.runoffCandidates || [];
   const hasVoted = state.hasVoted;
-  const myVote = state.myVote;
+
+  const displaySelection = hasVoted ? state.myVote : localRunoffSelection;
 
   content.innerHTML = `
     <div class="phase-header">
@@ -735,32 +1108,49 @@ function renderRunoffVoting(state, content, hostControls) {
     ${state.allVoted ? `<div class="all-votes-in-notice">✓ All Votes Are In</div>` : ''}
 
     ${hasVoted
-      ? `<div class="vote-status-badge voted mb-16">✓ Runoff Vote Cast</div>`
-      : `<div class="vote-status-badge waiting mb-16">Choose who to banish</div>`
+      ? `<div class="vote-status-badge voted mb-16">✓ Runoff Vote Locked In</div>`
+      : displaySelection
+        ? `<div class="vote-status-badge waiting mb-16">Selected — tap Lock In to confirm</div>`
+        : `<div class="vote-status-badge waiting mb-16">Choose who to banish</div>`
     }
 
     <div class="target-list" id="runoff-targets">
       ${candidates.map(c => `
-        <div class="target-card ${myVote === c.id ? 'selected' : ''}"
+        <div class="target-card ${displaySelection === c.id ? 'selected' : ''}"
              data-id="${c.id}" ${hasVoted ? 'style="pointer-events:none;opacity:0.75"' : ''}>
           <span class="target-name">${escHtml(c.name)}</span>
-          <div class="target-check">${myVote === c.id ? '✓' : ''}</div>
+          <div class="target-check">${displaySelection === c.id ? '✓' : ''}</div>
         </div>
       `).join('')}
     </div>
 
-    ${!hasVoted && candidates.some(c => c.id === myId) ? `
+    ${candidates.some(c => c.id === myId) ? `
       <p class="text-center text-muted mt-16" style="font-size:0.8rem;font-style:italic">You are in the runoff — you cannot vote for yourself.</p>
+    ` : ''}
+
+    ${!hasVoted ? `
+      <div style="margin-top:16px">
+        <button class="btn btn-large ${displaySelection ? 'btn-danger' : ''}" id="btn-lock-runoff-vote"
+          ${displaySelection ? '' : 'disabled'}
+          style="${displaySelection ? '' : 'background:var(--bg-card2);color:var(--text-muted);border:1px solid var(--border)'}">
+          🔒 Lock In Vote${displaySelection ? ` — ${escHtml(candidates.find(c => c.id === displaySelection)?.name || '')}` : ''}
+        </button>
+      </div>
     ` : ''}
   `;
 
   if (!hasVoted) {
     document.querySelectorAll('#runoff-targets .target-card[data-id]').forEach(card => {
       card.addEventListener('click', () => {
-        const targetId = card.dataset.id;
-        socket.emit('cast_runoff_vote', { targetId }, (res) => {
-          if (res.error) showToast('⚠️ ' + res.error);
-        });
+        localRunoffSelection = card.dataset.id;
+        renderRunoffVoting(state, content, hostControls);
+      });
+    });
+
+    document.getElementById('btn-lock-runoff-vote')?.addEventListener('click', () => {
+      if (!localRunoffSelection) return;
+      socket.emit('cast_runoff_vote', { targetId: localRunoffSelection }, (res) => {
+        if (res.error) showToast('⚠️ ' + res.error);
       });
     });
   }
@@ -789,10 +1179,10 @@ function renderBanishment(state, content, hostControls, phaseChanged) {
 
   content.innerHTML = `
     <div class="banishment-scene">
-      <div class="phase-eyebrow mb-16">Banishment</div>
+      <div class="phase-eyebrow mb-16">${currentTheme.banishmentLabel}</div>
       <div class="banishment-name">${escHtml(banishedName)}</div>
       <p style="font-family:var(--font-body);font-style:italic;color:var(--text-dim);margin-bottom:28px">
-        ${isMe ? 'You have been banished from the castle.' : 'has been banished from the castle.'}
+        ${isMe ? currentTheme.banishedMeDesc : currentTheme.banishedDesc}
       </p>
 
       <div id="banishment-reveal-area">
@@ -855,9 +1245,9 @@ function showBanishmentRole(state) {
     <div class="role-reveal-result">
       <div class="result-label">They were a...</div>
       <div class="result-role ${isTraitor ? 'traitor' : 'faithful'}">
-        ${isTraitor ? 'TRAITOR' : 'FAITHFUL'}
+        ${isTraitor ? currentTheme.traitorName : currentTheme.faithfulName}
       </div>
-      <div style="font-size:3rem;margin-top:12px">${isTraitor ? '🗡️' : '🛡️'}</div>
+      <div style="font-size:3rem;margin-top:12px">${isTraitor ? currentTheme.traitorIcon : currentTheme.faithfulIcon}</div>
     </div>
   `;
 }
@@ -877,8 +1267,8 @@ function renderEndGameVote(state, content, hostControls) {
     <div class="info-box gold mb-20">
       <p style="font-family:var(--font-body);font-style:italic;color:var(--text-dim);font-size:1rem;line-height:1.6">
         If all players vote to end the game:<br>
-        <strong style="color:var(--teal)">All Faithful</strong> → Faithful win.<br>
-        <strong style="color:var(--red-light)">Any Traitor among you</strong> → Traitors steal everything.
+        <strong style="color:var(--teal)">${currentTheme.endGameFaithfulLabel}</strong> → ${currentTheme.faithfulName}s win.<br>
+        <strong style="color:var(--red-light)">${currentTheme.endGameTraitorLabel}</strong> → ${currentTheme.traitorName}s steal everything.
       </p>
     </div>
 
@@ -936,31 +1326,51 @@ function renderEndGameVote(state, content, hostControls) {
 
 // ─── END GAME VOTE REVEAL ────────────────────────────────────────────────────
 function renderEndGameVoteReveal(state, content, hostControls) {
-  const results = state.endGameVoteResults || [];
-  const allEnd = results.every(r => r.vote === 'END');
+  const revealedVotes = state.endGameRevealedVotes || [];
+  const revealComplete = state.endGameVoteRevealComplete;
+  const results = state.endGameVoteResults || []; // only populated after complete
+  const allEnd = revealComplete && results.every(r => r.vote === 'END');
+
+  // Running tallies from revealed so far
+  const endCount    = revealedVotes.filter(v => v.vote === 'END').length;
+  const banishCount = revealedVotes.filter(v => v.vote === 'BANISH').length;
 
   content.innerHTML = `
     <div class="phase-header">
       <div class="phase-eyebrow">End Game Vote</div>
-      <div class="phase-title">${allEnd ? 'Unanimous!' : 'The Votes'}</div>
+      <div class="phase-title">
+        ${revealComplete
+          ? (allEnd ? 'Unanimous! 🏁' : 'Not Unanimous')
+          : 'Revealing Votes...'}
+      </div>
     </div>
 
+    ${revealedVotes.length > 0 ? `
+      <div class="endgame-vote-tally mb-12">
+        <span class="evt-end">🏁 End: <strong>${endCount}</strong></span>
+        <span class="evt-banish">⚔️ Banish: <strong>${banishCount}</strong></span>
+      </div>
+    ` : ''}
+
     <div class="mb-16">
-      ${results.map(r => `
+      ${revealedVotes.map(r => `
         <div class="end-vote-reveal-row">
           <span class="evr-name">${escHtml(r.name)}</span>
           <span class="evr-choice ${r.vote}">${r.vote === 'END' ? '🏁 End Game' : '⚔️ Keep Banishing'}</span>
         </div>
       `).join('')}
+      ${!revealComplete ? `
+        <div class="morning-next-hint">Next vote revealing soon...</div>
+      ` : ''}
     </div>
 
-    ${allEnd
-      ? `<div class="info-box teal text-center"><p style="color:var(--teal);font-weight:700">Everyone voted to end! Revealing all roles...</p></div>`
+    ${revealComplete ? (allEnd
+      ? `<div class="info-box teal text-center"><p style="color:var(--teal);font-weight:700">Everyone voted to end! Revealing all identities...</p></div>`
       : `<div class="info-box red text-center"><p style="color:var(--red-light);font-weight:700">Not unanimous. Banishment continues.</p></div>`
-    }
+    ) : ''}
   `;
 
-  if (state.isHost) {
+  if (state.isHost && revealComplete) {
     hostControls.innerHTML = `
       <button class="btn btn-primary btn-large" id="btn-resolve-end-vote">
         ${allEnd ? '🏆 Reveal the Winners' : '⚔️ Continue to Banishment'}
@@ -971,6 +1381,8 @@ function renderEndGameVoteReveal(state, content, hostControls) {
         if (res.error) showToast('⚠️ ' + res.error);
       });
     });
+  } else if (state.isHost) {
+    hostControls.innerHTML = `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Revealing votes...</p>`;
   }
 }
 
@@ -978,34 +1390,64 @@ function renderEndGameVoteReveal(state, content, hostControls) {
 function renderGameOver(state, content, hostControls) {
   const winner = state.winner;
   const isTraitorWin = winner === 'TRAITORS';
-  const allRoles = state.allPlayerRoles || [];
+  const allRoles = state.allPlayerRoles || []; // only revealed so far
+  const revealComplete = state.gameOverRevealComplete;
 
+  const roleCardHtml = (p) => {
+    const roleName = p.role === 'TRAITOR' ? currentTheme.traitorName
+                   : p.role === 'FAITHFUL' ? currentTheme.faithfulName
+                   : (p.role || '?');
+    return `
+      <div class="final-role-card ${p.role?.toLowerCase() || ''}"
+           style="animation: arrivalSlide 0.5s cubic-bezier(0.34,1.4,0.64,1) forwards">
+        <span class="final-role-name">
+          ${escHtml(p.name)}
+          ${p.id === myId ? ' <span style="color:var(--text-muted);font-size:0.75rem">(You)</span>' : ''}
+          ${!p.alive ? ' <span style="color:var(--text-muted);font-size:0.75rem">eliminated</span>' : ''}
+        </span>
+        <span class="final-role-badge ${p.role?.toLowerCase() || ''}">${roleName}</span>
+      </div>
+    `;
+  };
+
+  if (!revealComplete) {
+    // ── During reveal: suspenseful build-up, winner hidden ───────────────────
+    content.innerHTML = `
+      <div class="game-over-scene" style="padding-bottom:16px">
+        <div class="game-over-icon" style="animation:pulse-dim 2s ease-in-out infinite">🎭</div>
+        <div class="phase-title mb-8">Revealing All Identities</div>
+        <p class="game-over-subtitle">
+          ${allRoles.length === 0 ? 'Prepare yourself...' : 'The truth is coming out...'}
+        </p>
+      </div>
+      <div class="section-label mb-12">
+        Identities Revealed (${allRoles.length})
+      </div>
+      <div>
+        ${allRoles.map(roleCardHtml).join('')}
+        <div class="morning-next-hint">Next identity revealing soon...</div>
+      </div>
+    `;
+    if (state.isHost) {
+      hostControls.innerHTML = `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Revealing all roles...</p>`;
+    }
+    return;
+  }
+
+  // ── After reveal: winner banner erupts as the dramatic finale ────────────
   content.innerHTML = `
     <div class="game-over-scene">
-      <div class="game-over-icon">${isTraitorWin ? '🗡️' : '🏆'}</div>
+      <div class="game-over-icon">${isTraitorWin ? currentTheme.traitorIcon : '🏆'}</div>
       <div class="game-over-winner ${isTraitorWin ? 'traitors' : 'faithful'}">
-        ${isTraitorWin ? 'THE TRAITORS WIN' : 'THE FAITHFUL WIN'}
+        ${isTraitorWin ? currentTheme.traitorWin : currentTheme.faithfulWin}
       </div>
       <p class="game-over-subtitle">
-        ${isTraitorWin
-          ? 'The Traitors outlasted the Faithful and claim the prize.'
-          : 'The Faithful rooted out every last Traitor.'}
+        ${isTraitorWin ? currentTheme.traitorWinDesc : currentTheme.faithfulWinDesc}
       </p>
     </div>
 
     <div class="section-label mb-12">Final Roles</div>
-    <div>
-      ${allRoles.map(p => `
-        <div class="final-role-card ${p.role?.toLowerCase() || ''}">
-          <span class="final-role-name">
-            ${escHtml(p.name)}
-            ${p.id === myId ? ' <span style="color:var(--text-muted);font-size:0.75rem">(You)</span>' : ''}
-            ${!p.alive ? ' <span style="color:var(--text-muted);font-size:0.75rem">eliminated</span>' : ''}
-          </span>
-          <span class="final-role-badge ${p.role?.toLowerCase() || ''}">${p.role || '?'}</span>
-        </div>
-      `).join('')}
-    </div>
+    <div>${allRoles.map(roleCardHtml).join('')}</div>
   `;
 
   if (state.isHost) {
@@ -1026,11 +1468,22 @@ socket.on('player_disconnected', ({ name }) => {
 });
 
 socket.on('disconnect', () => {
-  showToast('⚠️ Lost connection to server. Please refresh.', 10000);
+  showToast('⚠️ Connection lost — reconnecting...', 10000);
 });
 
 socket.on('connect', () => {
-  if (gameCode) showToast('✓ Reconnected');
+  // On initial connect, do nothing — the create/join flow handles it.
+  // On REconnect (we already have a game), auto-rejoin so the server
+  // re-associates our new socket ID with our player record.
+  if (gameCode && myName) {
+    socket.emit('rejoin_game', { code: gameCode, name: myName }, (res) => {
+      if (res && res.error) {
+        showToast('⚠️ Could not rejoin: ' + res.error);
+      } else {
+        showToast('✓ Reconnected');
+      }
+    });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
