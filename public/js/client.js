@@ -1,8 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// client.js — Traitors Game Client
+// client.js — Social Deduction Game Client
 // ─────────────────────────────────────────────────────────────────────────────
 
 const socket = io();
+
+// ── Tip Jar ────────────────────────────────────────────────────────────────
+// ↓ Replace with your actual Buy Me a Coffee / Ko-fi / etc. URL
+const TIP_JAR_URL = 'https://buymeacoffee.com/tree23';
 
 // ── Themes ─────────────────────────────────────────────────────────────────
 const THEMES = {
@@ -62,6 +66,10 @@ const THEMES = {
     recruitedTitle: "You've Been Recruited!",
     recruitedDesc: 'The Traitors have chosen you. You are now one of them.<br>Keep this secret.',
     fellowTraitorsLabel: 'Your Fellow Traitors',
+    // Tip jar
+    tipIcon: '🏰',
+    tipTitle: 'The game has ended.',
+    tipBody: 'This free game was made with ❤️.<br>If you enjoyed plotting in the castle, a small tip means the world!',
   },
   werewolf: {
     id: 'werewolf',
@@ -108,6 +116,10 @@ const THEMES = {
     recruitedTitle: "You've Been Turned!",
     recruitedDesc: 'The pack has accepted you. You run with the wolves now.<br>Keep your secret.',
     fellowTraitorsLabel: 'Your Pack',
+    // Tip jar
+    tipIcon: '🌕',
+    tipTitle: 'The howling is over.',
+    tipBody: 'Survived the night? Made it out alive? This game is free and made with ❤️.<br>A small tip helps keep the village running!',
   },
   mole: {
     id: 'mole',
@@ -154,6 +166,10 @@ const THEMES = {
     recruitedTitle: "You've Been Flipped!",
     recruitedDesc: 'The network has turned you. You now work against your former team.<br>Maintain your cover.',
     fellowTraitorsLabel: 'Your Network',
+    // Tip jar
+    tipIcon: '🕵️',
+    tipTitle: 'Mission complete.',
+    tipBody: 'Identity revealed, mission closed. This game is free and made with ❤️.<br>A small tip keeps the operation running!',
   },
 
   cowboys: {
@@ -201,6 +217,10 @@ const THEMES = {
     recruitedTitle: "You've Been Converted! 👽",
     recruitedDesc: "The aliens got to you. You're one of them now.<br>Act natural, pardner.",
     fellowTraitorsLabel: 'Your Alien Pod',
+    // Tip jar
+    tipIcon: '🤠',
+    tipTitle: "Well, that was a hoot.",
+    tipBody: "Ride's over, partner. This here game is free and made with ❤️.<br>A small tip keeps the ranch goin', pardner!",
   },
 
   queer: {
@@ -248,13 +268,17 @@ const THEMES = {
     recruitedTitle: "You've Been Straightened! 😱",
     recruitedDesc: "The straights got to you. You're one of them now.<br>Keep your khakis on.",
     fellowTraitorsLabel: 'Fellow Straights',
+    // Tip jar
+    tipIcon: '🏳️‍🌈',
+    tipTitle: "Okurr, the gays have spoken. ✨",
+    tipBody: "Were you left absolutely gagged? This game is free and made with ❤️ (by a queer).<br>A small tip keeps the group chat alive, bestie!",
   },
 };
 
-let currentTheme = THEMES.traitors;
+let currentTheme = THEMES.queer;
 
 function applyTheme(themeId) {
-  const theme = THEMES[themeId] || THEMES.traitors;
+  const theme = THEMES[themeId] || THEMES.queer;
   currentTheme = theme;
   document.body.dataset.theme = theme.id;
   // Update landing screen
@@ -322,7 +346,10 @@ document.getElementById('btn-back-join').addEventListener('click', () => showScr
 // CREATE GAME
 // ─────────────────────────────────────────────────────────────────────────────
 let traitorCount = 3;
-let selectedTheme = 'traitors';
+let selectedTheme = 'queer';
+
+// Apply default theme on page load
+applyTheme('queer');
 
 function updateTraitorDisplay() {
   document.getElementById('traitor-count-display').textContent = traitorCount;
@@ -1472,7 +1499,51 @@ function renderGameOver(state, content, hostControls) {
       window.location.reload();
     });
   }
+
+  // Show themed tip jar modal after a short delay
+  showTipModal();
 }
+
+function showTipModal() {
+  const overlay = document.getElementById('tip-modal-overlay');
+  if (!overlay) return;
+  const icon  = document.getElementById('tip-modal-icon');
+  const title = document.getElementById('tip-modal-title');
+  const body  = document.getElementById('tip-modal-body');
+  if (icon)  icon.textContent  = currentTheme.tipIcon  || '☕';
+  if (title) title.textContent = currentTheme.tipTitle || 'Had a good time?';
+  if (body)  body.innerHTML    = currentTheme.tipBody  || 'This game is free and made with ❤️.<br>A small tip means the world!';
+  // Update all tip links to the configured URL
+  overlay.querySelectorAll('a.tip-modal-btn').forEach(a => a.href = TIP_JAR_URL);
+  setTimeout(() => {
+    overlay.classList.remove('hidden');
+    overlay.classList.add('visible');
+  }, 1200);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIP JAR — wire up links and close button
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Persistent bottom bar
+  const tipBarLink = document.querySelector('.tip-jar-link');
+  if (tipBarLink) tipBarLink.href = TIP_JAR_URL;
+
+  // Modal close button
+  document.getElementById('tip-modal-close')?.addEventListener('click', () => {
+    const overlay = document.getElementById('tip-modal-overlay');
+    overlay?.classList.remove('visible');
+    overlay?.classList.add('hidden');
+  });
+
+  // Close modal on overlay click
+  document.getElementById('tip-modal-overlay')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      e.currentTarget.classList.remove('visible');
+      e.currentTarget.classList.add('hidden');
+    }
+  });
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DISCONNECT NOTIFICATION

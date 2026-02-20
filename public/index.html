@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>The Traitors</title>
+  <title>Social Deduction Game</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
@@ -48,10 +48,6 @@
       <div class="form-group">
         <label>Game Theme</label>
         <div class="theme-picker" id="theme-picker">
-          <button class="theme-btn active" data-theme="traitors">
-            <span class="theme-btn-icon">🏰</span>
-            <span class="theme-btn-name">The Traitors</span>
-          </button>
           <button class="theme-btn" data-theme="werewolf">
             <span class="theme-btn-icon">🐺</span>
             <span class="theme-btn-name">Werewolves</span>
@@ -64,9 +60,13 @@
             <span class="theme-btn-icon">🤠</span>
             <span class="theme-btn-name">Cowboys</span>
           </button>
-          <button class="theme-btn" data-theme="queer">
+          <button class="theme-btn active" data-theme="queer">
             <span class="theme-btn-icon">🏳️‍🌈</span>
             <span class="theme-btn-name">The Gays</span>
+          </button>
+          <button class="theme-btn" data-theme="traitors">
+            <span class="theme-btn-icon">🏰</span>
+            <span class="theme-btn-name">The Traitors</span>
           </button>
         </div>
       </div>
@@ -130,6 +130,33 @@
        NOTIFICATION TOAST
   ════════════════════════════════════════════════════════════════════ -->
   <div id="toast" class="toast hidden"></div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       TIP JAR — persistent, always visible at bottom
+  ════════════════════════════════════════════════════════════════════ -->
+  <div id="tip-jar-bar" class="tip-jar-bar">
+    <a href="https://buymeacoffee.com/tree23" target="_blank" rel="noopener" class="tip-jar-link">
+      ☕ <span class="tip-jar-text">Enjoying the game? Buy me a coffee</span>
+    </a>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       GAME-OVER TIP MODAL
+  ════════════════════════════════════════════════════════════════════ -->
+  <div id="tip-modal-overlay" class="tip-modal-overlay hidden">
+    <div class="tip-modal">
+      <button class="tip-modal-close" id="tip-modal-close" aria-label="Close">✕</button>
+      <div class="tip-modal-icon" id="tip-modal-icon">☕</div>
+      <div class="tip-modal-title" id="tip-modal-title">Had a good time?</div>
+      <p class="tip-modal-body" id="tip-modal-body">
+        This game is free and made with ❤️.<br>If you enjoyed it, a small tip means the world!
+      </p>
+      <a href="https://buymeacoffee.com/tree23" target="_blank" rel="noopener" class="btn tip-modal-btn">
+        ☕ Buy me a coffee
+      </a>
+      <p class="tip-modal-disclaimer">100% optional · no account needed</p>
+    </div>
+  </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/client.js"></script>
