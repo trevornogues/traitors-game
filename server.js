@@ -139,7 +139,14 @@ io.on('connection', (socket) => {
   socket.on('join_game', ({ code, name }, cb) => {
     const game = getGame(code.toUpperCase().trim());
     if (!game) return cb({ error: 'Game not found' });
-    if (game.phase !== PHASES.LOBBY) return cb({ error: 'Game already started' });
+    if (game.phase !== PHASES.LOBBY) {
+      // Game already started — return structured info so client can show rejoin/spectate prompt
+      return cb({
+        error: 'Game already started',
+        gameInProgress: true,
+        disconnectedPlayers: game.getDisconnectedPlayers().map(p => ({ name: p.name })),
+      });
+    }
 
     const result = game.addPlayer(socket.id, name.trim());
     if (result.error) return cb(result);
@@ -148,6 +155,57 @@ io.on('connection', (socket) => {
     console.log(`[GAME] ${name} joined ${game.code}`);
     cb({ ok: true, code: game.code });
     broadcastGameState(game);
+  });
+
+  // ── CHECK GAME (pre-join probe) ────────────────────────────────────────────
+  socket.on('check_game', ({ code }, cb) => {
+    const game = getGame(code?.toUpperCase?.().trim());
+    if (!game) return cb({ found: false });
+    cb({
+      found: true,
+      started: game.phase !== PHASES.LOBBY,
+      disconnectedPlayers: game.getDisconnectedPlayers().map(p => ({ name: p.name })),
+    });
+  });
+
+  // ── CLAIM PLAYER (rejoin as a disconnected player) ─────────────────────────
+  socket.on('claim_player', ({ code, playerName }, cb) => {
+    const game = getGame(code?.toUpperCase?.().trim());
+    if (!game) return cb({ error: 'Game not found' });
+
+    const player = game.players.find(
+      p => p.name.toLowerCase() === playerName?.toLowerCase?.() && p.disconnected && !p.spectator
+    );
+    if (!player) return cb({ error: 'Player not found or not disconnected' });
+
+    const oldSocketId = player.socketId;
+    player.socketId = socket.id;
+    player.disconnected = false;
+    if (player.isHost) game.hostSocketId = socket.id;
+
+    socket.join(game.code);
+    console.log(`[CLAIM] ${playerName} reclaimed in ${game.code} (${oldSocketId} → ${socket.id})`);
+
+    cb({ ok: true, code: game.code });
+    socket.emit('game_state', game.buildPayloadFor(socket.id));
+    // Notify others this player is back
+    socket.to(game.code).emit('player_reconnected', { name: player.name });
+  });
+
+  // ── JOIN AS SPECTATOR ──────────────────────────────────────────────────────
+  socket.on('join_spectator', ({ code, name }, cb) => {
+    const game = getGame(code?.toUpperCase?.().trim());
+    if (!game) return cb({ error: 'Game not found' });
+    if (game.phase === PHASES.LOBBY) return cb({ error: 'Game not started yet — just join normally!' });
+
+    const result = game.addSpectator(socket.id, name);
+    if (result.error) return cb(result);
+
+    socket.join(game.code);
+    console.log(`[SPECTATE] ${name || 'Spectator'} joined ${game.code} as spectator`);
+
+    cb({ ok: true, code: game.code });
+    socket.emit('game_state', game.buildPayloadFor(socket.id));
   });
 
   // ── START GAME ─────────────────────────────────────────────────────────────
@@ -474,12 +532,19 @@ io.on('connection', (socket) => {
     const game = getGameBySocket(socket.id);
     if (!game) return;
 
+    const player = game.getPlayer(socket.id);
+
+    // Spectators are silently removed on disconnect
+    if (player && player.spectator) {
+      game.players = game.players.filter(p => p.socketId !== socket.id);
+      return;
+    }
+
     if (game.phase === PHASES.LOBBY) {
       game.removePlayer(socket.id);
       broadcastGameState(game);
-      if (game.players.length === 0) deleteGame(game.code);
+      if (game.players.filter(p => !p.spectator).length === 0) deleteGame(game.code);
     } else {
-      const player = game.getPlayer(socket.id);
       if (player) {
         player.disconnected = true;
         // Notify others

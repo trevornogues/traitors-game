@@ -297,8 +297,13 @@ let gameCode = null;
 let lastPhase = null;
 let countdownInterval = null;
 let recruitedShown = false; // track if we've shown the "you're recruited!" screen
+let nightCoverMode = false; // traitor cover screen — hides traitor controls behind innocent-looking waiting screen
 let localVoteSelection = null;    // pending vote selection before lock-in
 let localRunoffSelection = null;  // pending runoff vote selection before lock-in
+
+// ── Rejoin flow state ──────────────────────────────────────────────────────
+let pendingRejoinCode = null;   // code typed on the join screen, kept for rejoin/spectate flow
+let pendingRejoinName = null;   // name typed on the join screen, kept for spectate
 
 // ── Screens ────────────────────────────────────────────────────────────────
 function showScreen(id) {
@@ -434,7 +439,17 @@ document.getElementById('btn-join-game').addEventListener('click', () => {
   if (code.length !== 4) { errEl.textContent = 'Enter the 4-letter game code.'; return; }
 
   socket.emit('join_game', { name, code }, (res) => {
-    if (res.error) { errEl.textContent = res.error; return; }
+    if (res.error) {
+      // If the game is in progress, show the rejoin/spectate screen instead of a plain error
+      if (res.gameInProgress) {
+        pendingRejoinCode = code;
+        pendingRejoinName = name;
+        showRejoinScreen(res.disconnectedPlayers || [], name);
+        return;
+      }
+      errEl.textContent = res.error;
+      return;
+    }
     gameCode = res.code;
     myName = name;
     showScreen('screen-game');
@@ -444,6 +459,76 @@ document.getElementById('btn-join-game').addEventListener('click', () => {
 ['join-name', 'join-code'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('btn-join-game').click();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REJOIN / SPECTATE SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+document.getElementById('btn-back-rejoin').addEventListener('click', () => {
+  showScreen('screen-join');
+});
+
+function showRejoinScreen(disconnectedPlayers, enteredName) {
+  const section = document.getElementById('rejoin-players-section');
+  const divider = document.getElementById('rejoin-divider');
+  const errEl   = document.getElementById('rejoin-error');
+  errEl.textContent = '';
+
+  if (disconnectedPlayers.length > 0) {
+    divider.style.display = '';
+    section.innerHTML = `
+      <div class="rejoin-section-label">🔄 Rejoin as a disconnected player</div>
+      <p class="rejoin-section-desc">Select your name to pick up right where you left off.</p>
+      <div class="rejoin-player-list">
+        ${disconnectedPlayers.map(p => `
+          <button class="rejoin-player-btn ${p.name.toLowerCase() === enteredName.toLowerCase() ? 'is-me' : ''}"
+                  data-name="${escHtml(p.name)}">
+            <span class="rejoin-player-icon">👤</span>
+            <span class="rejoin-player-name">${escHtml(p.name)}</span>
+            ${p.name.toLowerCase() === enteredName.toLowerCase()
+              ? '<span class="rejoin-player-tag">That\'s you!</span>'
+              : ''}
+          </button>
+        `).join('')}
+      </div>
+    `;
+
+    // Wire up rejoin buttons
+    section.querySelectorAll('.rejoin-player-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const playerName = btn.dataset.name;
+        errEl.textContent = '';
+        socket.emit('claim_player', { code: pendingRejoinCode, playerName }, (res) => {
+          if (res.error) { errEl.textContent = res.error; return; }
+          gameCode = pendingRejoinCode;
+          myName = playerName;
+          showScreen('screen-game');
+        });
+      });
+    });
+  } else {
+    divider.style.display = 'none';
+    section.innerHTML = `
+      <div class="rejoin-section-label">🔄 Rejoin a disconnected player</div>
+      <p class="rejoin-section-desc" style="color:var(--text-muted);font-style:italic">
+        No players are currently disconnected.
+      </p>
+    `;
+  }
+
+  showScreen('screen-rejoin');
+}
+
+document.getElementById('btn-join-spectator').addEventListener('click', () => {
+  const errEl = document.getElementById('rejoin-error');
+  errEl.textContent = '';
+  const name = pendingRejoinName || 'Spectator';
+  socket.emit('join_spectator', { code: pendingRejoinCode, name }, (res) => {
+    if (res.error) { errEl.textContent = res.error; return; }
+    gameCode = pendingRejoinCode;
+    myName = name;
+    showScreen('screen-game');
   });
 });
 
@@ -458,7 +543,10 @@ socket.on('game_state', (state) => {
   // Update top bar
   document.getElementById('top-game-code').textContent = state.code || '----';
   document.getElementById('top-player-name').textContent = state.myName || '';
-  updateRoleBadge(state.myRole, state.isAlive);
+  updateRoleBadge(state.myRole, state.isAlive, state.isSpectator);
+  // Keep copy button always reflecting the current code
+  const copyBtn = document.getElementById('game-code-copy-btn');
+  if (copyBtn) copyBtn.dataset.code = state.code || '';
 
   // Host bar
   const hostBar = document.getElementById('host-bar');
@@ -479,15 +567,21 @@ socket.on('game_state', (state) => {
   renderPhase(state, phaseChanged);
 });
 
-function updateRoleBadge(role, alive) {
+function updateRoleBadge(role, alive, isSpectator) {
   const badge = document.getElementById('top-role-badge');
+  if (isSpectator) {
+    badge.textContent = '👁️ Spectating';
+    badge.className = 'role-badge spectator';
+    badge.style.opacity = '1';
+    return;
+  }
   if (!role) { badge.textContent = ''; badge.className = 'role-badge'; return; }
   const displayName = role === 'TRAITOR' ? currentTheme.traitorName
                     : role === 'FAITHFUL' ? currentTheme.faithfulName
                     : role;
   badge.textContent = displayName;
   badge.className = 'role-badge ' + role.toLowerCase();
-  if (!alive) badge.style.opacity = '0.5';
+  badge.style.opacity = alive ? '1' : '0.5';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -571,6 +665,17 @@ function renderLobby(state, content, hostControls) {
 
 // ─── ROLE REVEAL ────────────────────────────────────────────────────────────
 function renderRoleReveal(state, content, hostControls) {
+  if (state.isSpectator) {
+    content.innerHTML = `
+      <div class="role-reveal-card">
+        <div class="role-reveal-icon">👁️</div>
+        <div class="role-reveal-label">You are</div>
+        <div class="role-reveal-name faithful">Spectating</div>
+        <div class="role-reveal-desc">Watch the game unfold — you'll see everything a player sees, but can't vote or take action.</div>
+      </div>
+    `;
+    return;
+  }
   const isTraitor = state.myRole === 'TRAITOR';
 
   let traitorSection = '';
@@ -635,20 +740,47 @@ function renderNight(state, content, hostControls, phaseChanged) {
   // We track this with a flag since recruitment happens during NIGHT phase
   if (isTraitor && phaseChanged) recruitedShown = false;
 
+  // Reset cover mode at the start of each new night phase
+  if (phaseChanged) nightCoverMode = false;
+
+  // ── Shared waiting screen HTML (used by innocents AND traitors in cover mode) ─
+  const waitingScreenHtml = `
+    <div class="night-waiting">
+      <div class="night-waiting-icon">${currentTheme.nightIcon}</div>
+      <div class="phase-title mb-16">${currentTheme.nightTitle}</div>
+      <p class="night-waiting-text">
+        ${currentTheme.nightWaiting}<br>
+        <span style="color:var(--text-muted);font-size:0.9rem">${currentTheme.nightWaitingNote}</span>
+      </p>
+      <div class="night-tip-reminder">
+        🤫 <strong>Tip:</strong> Don't read your screen out loud — just look busy!
+      </div>
+    </div>
+  `;
+
   if (!isTraitor) {
     // ── Faithful waiting screen ─────────────────────────────────────────────
-    content.innerHTML = `
-      <div class="night-waiting">
-        <div class="night-waiting-icon">${currentTheme.nightIcon}</div>
-        <div class="phase-title mb-16">${currentTheme.nightTitle}</div>
-        <p class="night-waiting-text">
-          ${currentTheme.nightWaiting}<br>
-          <span style="color:var(--text-muted);font-size:0.9rem">${currentTheme.nightWaitingNote}</span>
-        </p>
-      </div>
-    `;
+    content.innerHTML = waitingScreenHtml;
     if (state.isHost) {
       hostControls.innerHTML = `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Waiting for ${currentTheme.traitorName}s to make their decision...</p>`;
+    }
+    return;
+  }
+
+  // ── Traitor in cover mode: show the innocent-looking waiting screen ─────────
+  if (nightCoverMode) {
+    content.innerHTML = `
+      ${waitingScreenHtml}
+      <div class="night-cover-toggle">
+        <button id="btn-toggle-cover" class="night-cover-reveal-btn">🗡️ Show my controls</button>
+      </div>
+    `;
+    document.getElementById('btn-toggle-cover')?.addEventListener('click', () => {
+      nightCoverMode = false;
+      renderNight(state, content, hostControls, false);
+    });
+    if (state.isHost) {
+      hostControls.innerHTML = `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Waiting for all ${currentTheme.traitorName}s to lock in...</p>`;
     }
     return;
   }
@@ -707,6 +839,10 @@ function renderNight(state, content, hostControls, phaseChanged) {
   }).join('');
 
   content.innerHTML = `
+    <div class="night-cover-toggle">
+      <button id="btn-toggle-cover" class="night-cover-hide-btn">📱 Cover Screen</button>
+    </div>
+
     <div class="phase-header">
       <div class="phase-eyebrow">${currentTheme.nightEyebrow}</div>
       <div class="phase-title">${currentTheme.nightTitle}</div>
@@ -741,6 +877,12 @@ function renderNight(state, content, hostControls, phaseChanged) {
       </button>
     ` : ''}
   `;
+
+  // Cover screen toggle
+  document.getElementById('btn-toggle-cover')?.addEventListener('click', () => {
+    nightCoverMode = true;
+    renderNight(state, content, hostControls, false);
+  });
 
   // Target selection
   document.querySelectorAll('.target-card[data-id]').forEach(card => {
@@ -1002,9 +1144,47 @@ function renderRoundTable(state, content, hostControls) {
   }
 }
 
+// ─── Shared observer view for voting phases (eliminated + spectators) ────────
+function renderObserverVotingView(state, content, { eyebrow, title, subtitle } = {}) {
+  const isSpectator = state.isSpectator;
+  content.innerHTML = `
+    <div class="phase-header">
+      <div class="phase-eyebrow">${eyebrow || currentTheme.voteEyebrow}</div>
+      <div class="phase-title">${title || 'Vote in Progress'}</div>
+      ${subtitle ? `<div class="phase-subtitle">${subtitle}</div>` : ''}
+    </div>
+
+    <div class="observer-vote-card">
+      <div class="observer-vote-icon">${isSpectator ? '👁️' : '☠️'}</div>
+      <div class="observer-vote-label">
+        ${isSpectator ? 'You\'re spectating' : 'You\'ve been eliminated'}
+      </div>
+      <p class="observer-vote-desc">
+        ${isSpectator
+          ? 'Sit back and watch — the vote will be revealed shortly.'
+          : 'You can\'t vote, but you can watch the results when they\'re revealed.'}
+      </p>
+    </div>
+
+    <div class="vote-progress">
+      <span>${state.voteCount} / ${state.totalVoters} voted</span>
+      <div class="vote-progress-bar">
+        <div class="vote-progress-fill" style="width:${state.totalVoters ? (state.voteCount / state.totalVoters * 100) : 0}%"></div>
+      </div>
+    </div>
+    ${state.allVoted ? `<div class="all-votes-in-notice">✓ All Votes Are In</div>` : ''}
+  `;
+}
+
 // ─── VOTING ─────────────────────────────────────────────────────────────────
 function renderVoting(state, content, hostControls) {
   const alive = state.alivePlayers || [];
+
+  if (!state.isAlive) {
+    renderObserverVotingView(state, content, { eyebrow: currentTheme.voteEyebrow, title: 'Banishment Vote' });
+    return;
+  }
+
   const hasVoted = state.hasVoted;
 
   // Once locked in, use the server-confirmed vote for display; otherwise local selection
@@ -1161,6 +1341,16 @@ function renderVoteReveal(state, content, hostControls, isRunoff) {
 // ─── RUNOFF VOTING ──────────────────────────────────────────────────────────
 function renderRunoffVoting(state, content, hostControls) {
   const candidates = state.runoffCandidates || [];
+
+  if (!state.isAlive) {
+    renderObserverVotingView(state, content, {
+      eyebrow: 'Tie Breaker',
+      title: 'Runoff Vote',
+      subtitle: 'The vote was tied — a runoff is underway.',
+    });
+    return;
+  }
+
   const hasVoted = state.hasVoted;
 
   const displaySelection = hasVoted ? state.myVote : localRunoffSelection;
@@ -1328,6 +1518,15 @@ function showBanishmentRole(state) {
 
 // ─── END GAME VOTE ───────────────────────────────────────────────────────────
 function renderEndGameVote(state, content, hostControls) {
+  if (!state.isAlive) {
+    renderObserverVotingView(state, content, {
+      eyebrow: 'End Game',
+      title: 'Do You End It?',
+      subtitle: 'A unanimous vote to end wins — or continue banishing.',
+    });
+    return;
+  }
+
   const hasVoted = state.hasVoted;
   const myVote = state.myVote;
 
@@ -1558,6 +1757,21 @@ function showTipModal() {
 // TIP JAR — wire up links and close button
 // ─────────────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  // ── Game code copy button ───────────────────────────────────────────────
+  document.getElementById('game-code-copy-btn')?.addEventListener('click', () => {
+    const btn  = document.getElementById('game-code-copy-btn');
+    const code = btn?.dataset.code || gameCode || '';
+    if (!code || code === '----') return;
+    navigator.clipboard.writeText(code).then(() => {
+      showToast(`📋 Code copied: ${code}`, 2500);
+      btn.classList.add('copied');
+      setTimeout(() => btn.classList.remove('copied'), 1200);
+    }).catch(() => {
+      // Fallback for browsers without clipboard API
+      showToast(`Game code: ${code}`, 3000);
+    });
+  });
+
   // Persistent bottom bar
   const tipBarLink = document.querySelector('.tip-jar-link');
   if (tipBarLink) tipBarLink.href = TIP_JAR_URL;
@@ -1583,6 +1797,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 socket.on('player_disconnected', ({ name }) => {
   showToast(`⚠️ ${name} disconnected`, 5000);
+});
+
+socket.on('player_reconnected', ({ name }) => {
+  showToast(`✅ ${name} rejoined the game!`, 4000);
 });
 
 socket.on('disconnect', () => {

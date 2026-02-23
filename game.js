@@ -52,7 +52,7 @@ class Game {
     this.theme = theme || 'traitors';
     this.hostSocketId = hostSocketId; // can change if host reconnects
 
-    // Players: { socketId, name, role, alive, isHost, eliminated, spectator }
+    // Players: { socketId, name, role, alive, isHost, eliminated, disconnected, spectator }
     this.players = [];
 
     // Add host as first player
@@ -170,6 +170,26 @@ class Game {
     const host = this.players.find(p => p.isHost);
     if (host) host.socketId = newSocketId;
     this.hostSocketId = newSocketId;
+  }
+
+  // Returns players who are currently disconnected (excludes spectators)
+  getDisconnectedPlayers() {
+    return this.players.filter(p => p.disconnected && !p.spectator);
+  }
+
+  // Add a spectator (can join any in-progress game)
+  addSpectator(socketId, name) {
+    if (this.players.some(p => p.socketId === socketId)) return { error: 'Already in game' };
+    this.players.push({
+      socketId,
+      name: (name || 'Spectator').trim().slice(0, 20),
+      role: null,
+      alive: false,
+      isHost: false,
+      eliminated: false,
+      spectator: true,
+    });
+    return { ok: true };
   }
 
   // ─── Start game / role assignment ──────────────────────────────────────────
@@ -633,10 +653,14 @@ class Game {
 
   buildPayloadFor(socketId) {
     const player = this.getPlayer(socketId);
-    const isHost = player && player.isHost;
-    const role = player ? player.role : null;
+    const isSpectator = player && player.spectator === true;
+    const isHost = player && player.isHost && !isSpectator;
+    const role = (player && !isSpectator) ? player.role : null;
     const isTraitor = role === ROLES.TRAITOR;
-    const isAlive = player && player.alive;
+    const isAlive = player && player.alive && !isSpectator;
+
+    // Real (non-spectator) player list helpers used in multiple places
+    const realPlayers = this.players.filter(p => !p.spectator);
 
     // Base payload visible to all
     const payload = {
@@ -649,6 +673,7 @@ class Game {
       myRole: role,
       isHost,
       isAlive,
+      isSpectator,
       isEndGameMode: this.isEndGameMode,
       canTriggerEndGame: isHost && this.canTriggerEndGame() && !this.isEndGameMode,
 
@@ -660,8 +685,8 @@ class Game {
         isHost: p.isHost,
       })),
 
-      // All players including eliminated (for morning/banishment context)
-      allPlayers: this.players.map(p => ({
+      // All players including eliminated (for morning/banishment context) — excludes spectators
+      allPlayers: realPlayers.map(p => ({
         id: p.socketId,
         name: p.name,
         alive: p.alive,
@@ -671,8 +696,8 @@ class Game {
         isMe: p.socketId === socketId,
       })),
 
-      // Lobby player list
-      lobbyPlayers: this.players.map(p => ({
+      // Lobby player list — excludes spectators
+      lobbyPlayers: realPlayers.map(p => ({
         id: p.socketId,
         name: p.name,
         isHost: p.isHost,

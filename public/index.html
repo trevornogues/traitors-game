@@ -99,6 +99,36 @@
   </div>
 
   <!-- ════════════════════════════════════════════════════════════════════
+       REJOIN / SPECTATE SCREEN  (shown when joining an in-progress game)
+  ════════════════════════════════════════════════════════════════════ -->
+  <div id="screen-rejoin" class="screen">
+    <div class="screen-header">
+      <button class="btn-back" id="btn-back-rejoin">← Back</button>
+      <h2>Game In Progress</h2>
+    </div>
+    <div class="form-container">
+      <p class="rejoin-intro">This game has already started. Choose an option below:</p>
+
+      <!-- Disconnected players section (populated by JS) -->
+      <div id="rejoin-players-section">
+        <!-- filled dynamically -->
+      </div>
+
+      <!-- Spectate section -->
+      <div class="rejoin-divider" id="rejoin-divider">
+        <span>or</span>
+      </div>
+      <div class="rejoin-spectate-section">
+        <div class="rejoin-section-label">👁️ Watch the game</div>
+        <p class="rejoin-section-desc">Join as a spectator — you can follow along but won't be a player.</p>
+        <button class="btn btn-secondary btn-large" id="btn-join-spectator">👁️ Spectate</button>
+      </div>
+
+      <p class="error-msg" id="rejoin-error"></p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
        MAIN GAME SCREEN — all phases render here
   ════════════════════════════════════════════════════════════════════ -->
   <div id="screen-game" class="screen">
@@ -106,7 +136,11 @@
     <!-- Top bar -->
     <div class="top-bar" id="top-bar">
       <div class="top-bar-left">
-        <span class="game-code-label">GAME: <strong id="top-game-code">----</strong></span>
+        <button class="game-code-label game-code-copy-btn" id="game-code-copy-btn"
+                title="Tap to copy game code">
+          GAME: <strong id="top-game-code">----</strong>
+          <span class="game-code-copy-icon">⎘</span>
+        </button>
       </div>
       <div class="top-bar-right">
         <span id="top-player-name"></span>
