@@ -70,6 +70,51 @@
           </button>
         </div>
       </div>
+      <!-- Advanced Settings -->
+      <div class="form-group advanced-settings-group">
+        <button type="button" class="btn-advanced-toggle" id="btn-advanced-toggle">
+          ⚙️ Advanced Settings
+          <span class="advanced-toggle-chevron" id="advanced-toggle-chevron">▼</span>
+        </button>
+        <div class="advanced-settings-panel" id="advanced-settings-panel">
+          <div class="advanced-setting-row">
+            <div class="advanced-setting-label">Max Players</div>
+            <div class="advanced-setting-hint">Limit how many can join (3–30). Default is 30.</div>
+            <div class="traitor-picker" style="margin-top: 8px;">
+              <button class="btn-stepper" id="btn-maxplayers-down">−</button>
+              <span id="maxplayers-display">30</span>
+              <button class="btn-stepper" id="btn-maxplayers-up">+</button>
+            </div>
+          </div>
+          <div class="advanced-setting-row">
+            <div class="advanced-setting-label">🔥 Finale — Player Count</div>
+            <div class="advanced-setting-hint">Finale triggers automatically when this many players remain after a banishment (3–6). Default is 5.</div>
+            <div class="traitor-picker" style="margin-top: 8px;">
+              <button class="btn-stepper" id="btn-egt-down">−</button>
+              <span id="egt-display">5</span>
+              <button class="btn-stepper" id="btn-egt-up">+</button>
+            </div>
+          </div>
+          <div class="advanced-setting-row">
+            <div class="advanced-setting-label">🎭 Hide Identity Reveals After</div>
+            <div class="advanced-setting-hint">Stop showing the banished player's role when this many (or fewer) players remain before the banishment (3–6). Default is 4.</div>
+            <div class="traitor-picker" style="margin-top: 8px;">
+              <button class="btn-stepper" id="btn-hrt-down">−</button>
+              <span id="hrt-display">4</span>
+              <button class="btn-stepper" id="btn-hrt-up">+</button>
+            </div>
+          </div>
+          <div class="advanced-setting-row">
+            <div class="advanced-setting-label">⚖️ Persistent Tie Breaker</div>
+            <div class="advanced-setting-hint">If the runoff vote is also tied, how should it be resolved?</div>
+            <div class="setting-toggle-group" id="tie-breaker-toggle" style="margin-top: 8px;">
+              <button class="setting-toggle-btn" data-value="host">👑 Host Chooses</button>
+              <button class="setting-toggle-btn active" data-value="random">🎲 Random Draw</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <button class="btn btn-primary btn-large" id="btn-create-game">Create Game</button>
       <p class="error-msg" id="create-error"></p>
     </div>
@@ -268,9 +313,10 @@
         This game is free and made with ❤️.<br>If you enjoyed it, a small tip means the world!
       </p>
       <a href="https://buymeacoffee.com/tree23" target="_blank" rel="noopener" class="btn tip-modal-btn">
-        ☕ Buy me a coffee
+        ☕ Tip me
       </a>
       <p class="tip-modal-disclaimer">100% optional · no account needed</p>
+      <button class="tip-modal-dismiss" id="tip-modal-dismiss">No thanks</button>
     </div>
   </div>
 

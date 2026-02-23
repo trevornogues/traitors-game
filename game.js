@@ -45,11 +45,26 @@ function generateCode() {
 // Game class
 // ─────────────────────────────────────────────────────────────────────────────
 class Game {
-  constructor(hostSocketId, hostName, numTraitors, theme) {
+  constructor(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode) {
     this.code = generateCode();
     this.phase = PHASES.LOBBY;
     this.numTraitors = numTraitors;
     this.theme = theme || 'traitors';
+    this.maxPlayers = Math.min(30, Math.max(3, parseInt(maxPlayers) || 30));
+    // Finale triggers automatically when alive players drop to this count after a banishment.
+    // If alive players are already BELOW this threshold when entering the round table,
+    // the finale triggers immediately (skipping a normal banishment vote).
+    this.endGameThreshold = Math.min(6, Math.max(3, parseInt(endGameThreshold) || 5));
+    // When the alive player count is AT OR BELOW this number before a banishment, the
+    // banished player's role is NOT revealed — keeping identities secret for the finale.
+    this.hideRoleThreshold = Math.min(6, Math.max(3, parseInt(hideRoleThreshold) || 4));
+    // How to break a persistent tie after the runoff vote is also tied.
+    // 'host' — host manually picks from the tied players (shown as buttons on their screen)
+    // 'random' — server picks a random candidate immediately; no host input needed
+    this.tieBreakerMode = (tieBreakerMode === 'host') ? 'host' : 'random';
+    // When tieBreakerMode === 'host' and a second tie occurs, this holds the tied candidates
+    // so the client can render the host-pick UI.
+    this.tieBrokenCandidates = null;
     this.hostSocketId = hostSocketId; // can change if host reconnects
 
     // Players: { socketId, name, role, alive, isHost, eliminated, disconnected, spectator }
@@ -141,7 +156,7 @@ class Game {
 
   addPlayer(socketId, name) {
     if (this.phase !== PHASES.LOBBY) return { error: 'Game already started' };
-    if (this.players.length >= 20) return { error: 'Game is full (max 20)' };
+    if (this.players.length >= this.maxPlayers) return { error: `Game is full (max ${this.maxPlayers})` };
     const nameTaken = this.players.some(p => p.name.toLowerCase() === name.toLowerCase());
     if (nameTaken) return { error: 'Name already taken' };
     this.players.push({
@@ -164,6 +179,28 @@ class Game {
       const p = this.getPlayer(socketId);
       if (p) p.disconnected = true;
     }
+  }
+
+  updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode }) {
+    if (this.phase !== PHASES.LOBBY) return { error: 'Game already started' };
+    if (maxPlayers !== undefined) {
+      const mp = Math.min(30, Math.max(3, parseInt(maxPlayers) || 30));
+      // Can't set max below current player count
+      if (mp < this.players.filter(p => !p.spectator).length) {
+        return { error: `Can't set max lower than current player count (${this.players.filter(p => !p.spectator).length})` };
+      }
+      this.maxPlayers = mp;
+    }
+    if (endGameThreshold !== undefined) {
+      this.endGameThreshold = Math.min(6, Math.max(3, parseInt(endGameThreshold) || 5));
+    }
+    if (hideRoleThreshold !== undefined) {
+      this.hideRoleThreshold = Math.min(6, Math.max(3, parseInt(hideRoleThreshold) || 4));
+    }
+    if (tieBreakerMode !== undefined) {
+      this.tieBreakerMode = (tieBreakerMode === 'host') ? 'host' : 'random';
+    }
+    return { ok: true };
   }
 
   updateHostSocket(newSocketId) {
@@ -368,12 +405,17 @@ class Game {
     this.phase = PHASES.ROUND_TABLE;
     this.round++;
 
-    // Check end-game trigger availability (will be surfaced to host in payload)
+    // Auto-trigger the Finale if alive count is already BELOW the threshold —
+    // meaning a normal banishment would drop players under the minimum.
+    // (When exactly AT threshold, the banishment happens first, then the Finale
+    // is triggered inside executeBanishment by the server.)
+    if (!this.isEndGameMode && this.getAlivePlayers().length < this.endGameThreshold) {
+      this.isEndGameMode = true;
+      this.phase = PHASES.END_GAME_VOTE;
+      this.endGameVotes = {};
+    }
   }
 
-  canTriggerEndGame() {
-    return this.getAlivePlayers().length <= 5;
-  }
 
   // ─── Voting ────────────────────────────────────────────────────────────────
 
@@ -468,6 +510,7 @@ class Game {
 
     if (tied.length === 1) {
       // Clear winner
+      this.tieBrokenCandidates = null;
       this.pendingBanishedId = tied[0];
       const p = this.getPlayer(tied[0]);
       this.pendingBanishedRole = p ? p.role : null;
@@ -476,8 +519,21 @@ class Game {
     } else {
       // Tie → runoff
       if (isRunoff) {
-        // Still tied after runoff — host breaks tie
-        return { tied: true, tieBroken: true, candidates: tied };
+        // Still tied after runoff — resolve based on tieBreakerMode
+        if (this.tieBreakerMode === 'random') {
+          // Pick a random candidate immediately
+          const chosen = tied[Math.floor(Math.random() * tied.length)];
+          this.tieBrokenCandidates = null;
+          this.pendingBanishedId = chosen;
+          const p = this.getPlayer(chosen);
+          this.pendingBanishedRole = p ? p.role : null;
+          this.phase = PHASES.BANISHMENT;
+          return { tied: false, randomlyChosen: true, banishedId: chosen };
+        } else {
+          // Host picks — store candidates for the client to render a pick UI
+          this.tieBrokenCandidates = tied;
+          return { tied: true, tieBroken: true, candidates: tied };
+        }
       }
       this.runoffCandidates = tied;
       this.runoffVotes = {};
@@ -485,8 +541,9 @@ class Game {
     }
   }
 
-  // Host breaks tie after double runoff
+  // Host breaks tie after double runoff (only used when tieBreakerMode === 'host')
   hostBreaksTie(targetId) {
+    this.tieBrokenCandidates = null;
     this.pendingBanishedId = targetId;
     const p = this.getPlayer(targetId);
     this.pendingBanishedRole = p ? p.role : null;
@@ -555,14 +612,6 @@ class Game {
   }
 
   // ─── End-game vote ─────────────────────────────────────────────────────────
-
-  triggerEndGameMode() {
-    if (!this.canTriggerEndGame()) return { error: 'End game not available yet' };
-    this.isEndGameMode = true;
-    this.phase = PHASES.END_GAME_VOTE;
-    this.endGameVotes = {};
-    return { ok: true };
-  }
 
   castEndGameVote(socketId, choice) {
     if (this.phase !== PHASES.END_GAME_VOTE) return { error: 'Not in end game vote' };
@@ -675,7 +724,9 @@ class Game {
       isAlive,
       isSpectator,
       isEndGameMode: this.isEndGameMode,
-      canTriggerEndGame: isHost && this.canTriggerEndGame() && !this.isEndGameMode,
+      endGameThreshold: this.endGameThreshold,
+      hideRoleThreshold: this.hideRoleThreshold,
+      tieBreakerMode: this.tieBreakerMode,
 
       // Alive player list (names + ids only — no roles)
       alivePlayers: this.getAlivePlayers().map(p => ({
@@ -704,6 +755,7 @@ class Game {
       })),
 
       numTraitors: isHost ? this.numTraitors : undefined,
+      maxPlayers: this.maxPlayers,
     };
 
     // Phase-specific additions
@@ -778,7 +830,6 @@ class Game {
 
       case PHASES.ROUND_TABLE: {
         payload.canOpenVoting = isHost && isAlive;
-        payload.canTriggerEndGame = isHost && this.canTriggerEndGame() && !this.isEndGameMode;
         break;
       }
 
@@ -821,14 +872,24 @@ class Game {
         payload.tallies = this.buildTallies(isRunoff);
         payload.revealComplete = this.voteRevealIndex >= this.revealOrder.length;
         payload.isRunoff = isRunoff;
+        // Include tied candidates for host-pick UI after a persistent tie
+        if (this.tieBrokenCandidates) {
+          payload.tieBrokenCandidates = this.tieBrokenCandidates.map(id => {
+            const p = this.getPlayer(id);
+            return { id, name: p ? p.name : '?' };
+          });
+        }
         break;
       }
 
       case PHASES.BANISHMENT: {
         const banished = this.getPlayer(this.pendingBanishedId);
+        // Hide the role if there are this.hideRoleThreshold or fewer players alive before the banishment
+        const hideRole = this.getAlivePlayers().length <= this.hideRoleThreshold;
         payload.banishedName = banished ? banished.name : null;
-        payload.banishedRole = this.pendingBanishedRole;
+        payload.banishedRole = hideRole ? null : this.pendingBanishedRole;
         payload.banishedId = this.pendingBanishedId;
+        payload.hideRole = hideRole;
         break;
       }
 
@@ -891,10 +952,10 @@ class Game {
 // ─────────────────────────────────────────────────────────────────────────────
 const games = new Map(); // code -> Game
 
-function createGame(hostSocketId, hostName, numTraitors, theme) {
+function createGame(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode) {
   let code;
   do { code = generateCode(); } while (games.has(code));
-  const game = new Game(hostSocketId, hostName, numTraitors, theme);
+  const game = new Game(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode);
   game.code = code;
   games.set(code, game);
   return game;

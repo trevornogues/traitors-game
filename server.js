@@ -121,14 +121,18 @@ io.on('connection', (socket) => {
   console.log(`[+] Connected: ${socket.id}`);
 
   // ── CREATE GAME ────────────────────────────────────────────────────────────
-  socket.on('create_game', ({ name, numTraitors, theme }, cb) => {
+  socket.on('create_game', ({ name, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode }, cb) => {
     if (!name || !numTraitors) return cb({ error: 'Missing fields' });
     const n = parseInt(numTraitors);
     if (isNaN(n) || n < 1 || n > 8) return cb({ error: 'Invalid traitor count (1–8)' });
     const validThemes = ['traitors', 'werewolf', 'mole', 'cowboys', 'queer'];
     const t = validThemes.includes(theme) ? theme : 'traitors';
+    const mp  = Math.min(30, Math.max(3, parseInt(maxPlayers) || 30));
+    const egt = Math.min(6,  Math.max(3, parseInt(endGameThreshold) || 5));
+    const hrt = Math.min(6,  Math.max(3, parseInt(hideRoleThreshold) || 4));
+    const tbm = (tieBreakerMode === 'host') ? 'host' : 'random';
 
-    const game = createGame(socket.id, name.trim(), n, t);
+    const game = createGame(socket.id, name.trim(), n, t, mp, egt, hrt, tbm);
     socket.join(game.code);
     console.log(`[GAME] Created: ${game.code} by ${name} (${n} traitors)`);
     cb({ ok: true, code: game.code });
@@ -206,6 +210,17 @@ io.on('connection', (socket) => {
 
     cb({ ok: true, code: game.code });
     socket.emit('game_state', game.buildPayloadFor(socket.id));
+  });
+
+  // ── UPDATE LOBBY SETTINGS (host only, lobby phase only) ────────────────────
+  socket.on('update_lobby_settings', ({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode }, cb) => {
+    const game = getGameBySocket(socket.id);
+    if (!game) return cb({ error: 'Not in a game' });
+    if (!game.isHost(socket.id)) return cb({ error: 'Not the host' });
+    const result = game.updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode });
+    if (result.error) return cb(result);
+    cb({ ok: true });
+    broadcastGameState(game);
   });
 
   // ── START GAME ─────────────────────────────────────────────────────────────
@@ -296,19 +311,6 @@ io.on('connection', (socket) => {
     if (game.phase !== PHASES.MORNING) return cb({ error: 'Wrong phase' });
 
     game.proceedToRoundTable();
-    cb({ ok: true });
-    broadcastGameState(game);
-  });
-
-  // ── HOST: TRIGGER END GAME MODE ────────────────────────────────────────────
-  socket.on('trigger_end_game', (_, cb) => {
-    const game = getGameBySocket(socket.id);
-    if (!game) return cb({ error: 'Not in a game' });
-    if (!game.isHost(socket.id)) return cb({ error: 'Not the host' });
-
-    const result = game.triggerEndGameMode();
-    if (result.error) return cb(result);
-
     cb({ ok: true });
     broadcastGameState(game);
   });
@@ -439,11 +441,17 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // In end game mode, skip night and go to end game vote
+    const alivePlayers = game.getAlivePlayers();
+
+    // Auto-trigger the Finale the first time alive count hits the threshold
+    if (!game.isEndGameMode && alivePlayers.length <= game.endGameThreshold) {
+      game.isEndGameMode = true;
+    }
+
+    // In Finale mode: cycle back to end-game vote, not night
     if (game.isEndGameMode) {
-      const alivePlayers = game.getAlivePlayers();
       if (alivePlayers.length <= 2) {
-        // Auto-end
+        // Too few to vote — resolve immediately
         const endResult = game._resolveEndGame();
         broadcastGameState(game);
         startGameOverRevealTimer(game);

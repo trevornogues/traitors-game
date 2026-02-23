@@ -297,6 +297,7 @@ let gameCode = null;
 let lastPhase = null;
 let countdownInterval = null;
 let recruitedShown = false; // track if we've shown the "you're recruited!" screen
+let lobbySettingsOpen = false; // tracks whether the host's lobby settings panel is open across re-renders
 let nightCoverMode = false; // traitor cover screen — hides traitor controls behind innocent-looking waiting screen
 let localVoteSelection = null;    // pending vote selection before lock-in
 let localRunoffSelection = null;  // pending runoff vote selection before lock-in
@@ -385,6 +386,10 @@ document.getElementById('btn-back-join').addEventListener('click', () => showScr
 // ─────────────────────────────────────────────────────────────────────────────
 let traitorCount = 3;
 let selectedTheme = 'queer';
+let maxPlayersCreate = 30;         // max players for the game being created
+let endGameThresholdCreate = 5;    // finale player count for the game being created
+let hideRoleThresholdCreate = 4;   // stop revealing banished roles when ≤ this many players remain before banishment
+let tieBreakerModeCreate = 'random'; // 'host' or 'random' — how to break a persistent runoff tie
 
 // Apply default theme on page load
 applyTheme('queer');
@@ -398,6 +403,63 @@ document.getElementById('btn-traitors-down').addEventListener('click', () => {
 document.getElementById('btn-traitors-up').addEventListener('click', () => {
   if (traitorCount < 8) { traitorCount++; updateTraitorDisplay(); }
 });
+
+// Advanced Settings toggle (create screen)
+(function () {
+  const toggle  = document.getElementById('btn-advanced-toggle');
+  const panel   = document.getElementById('advanced-settings-panel');
+  const chevron = document.getElementById('advanced-toggle-chevron');
+  let open = false;
+
+  toggle.addEventListener('click', () => {
+    open = !open;
+    panel.classList.toggle('open', open);
+    chevron.textContent = open ? '▲' : '▼';
+  });
+
+  // Max players stepper
+  function updateMaxPlayersDisplay() {
+    document.getElementById('maxplayers-display').textContent = maxPlayersCreate;
+  }
+  document.getElementById('btn-maxplayers-down').addEventListener('click', () => {
+    if (maxPlayersCreate > 3) { maxPlayersCreate--; updateMaxPlayersDisplay(); }
+  });
+  document.getElementById('btn-maxplayers-up').addEventListener('click', () => {
+    if (maxPlayersCreate < 30) { maxPlayersCreate++; updateMaxPlayersDisplay(); }
+  });
+
+  // Finale threshold stepper
+  function updateEgtDisplay() {
+    document.getElementById('egt-display').textContent = endGameThresholdCreate;
+  }
+  document.getElementById('btn-egt-down').addEventListener('click', () => {
+    if (endGameThresholdCreate > 3) { endGameThresholdCreate--; updateEgtDisplay(); }
+  });
+  document.getElementById('btn-egt-up').addEventListener('click', () => {
+    if (endGameThresholdCreate < 6) { endGameThresholdCreate++; updateEgtDisplay(); }
+  });
+
+  // Hide role threshold stepper
+  function updateHrtDisplay() {
+    document.getElementById('hrt-display').textContent = hideRoleThresholdCreate;
+  }
+  document.getElementById('btn-hrt-down').addEventListener('click', () => {
+    if (hideRoleThresholdCreate > 3) { hideRoleThresholdCreate--; updateHrtDisplay(); }
+  });
+  document.getElementById('btn-hrt-up').addEventListener('click', () => {
+    if (hideRoleThresholdCreate < 6) { hideRoleThresholdCreate++; updateHrtDisplay(); }
+  });
+
+  // Tie breaker mode toggle
+  document.querySelectorAll('#tie-breaker-toggle .setting-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tieBreakerModeCreate = btn.dataset.value;
+      document.querySelectorAll('#tie-breaker-toggle .setting-toggle-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.value === tieBreakerModeCreate);
+      });
+    });
+  });
+})();
 
 // Theme picker
 document.querySelectorAll('.theme-btn').forEach(btn => {
@@ -415,7 +477,7 @@ document.getElementById('btn-create-game').addEventListener('click', () => {
   errEl.textContent = '';
   if (!name) { errEl.textContent = 'Please enter your name.'; return; }
 
-  socket.emit('create_game', { name, numTraitors: traitorCount, theme: selectedTheme }, (res) => {
+  socket.emit('create_game', { name, numTraitors: traitorCount, theme: selectedTheme, maxPlayers: maxPlayersCreate, endGameThreshold: endGameThresholdCreate, hideRoleThreshold: hideRoleThresholdCreate, tieBreakerMode: tieBreakerModeCreate }, (res) => {
     if (res.error) { errEl.textContent = res.error; return; }
     gameCode = res.code;
     myName = name;
@@ -563,6 +625,8 @@ socket.on('game_state', (state) => {
   // Clear local vote selections when entering a fresh voting phase
   if (phaseChanged && state.phase === 'VOTING') localVoteSelection = null;
   if (phaseChanged && state.phase === 'RUNOFF_VOTING') localRunoffSelection = null;
+  // Close the lobby settings panel when the game leaves the lobby
+  if (phaseChanged && state.phase !== 'LOBBY') lobbySettingsOpen = false;
 
   renderPhase(state, phaseChanged);
 });
@@ -613,6 +677,8 @@ function renderPhase(state, phaseChanged) {
 // ─── LOBBY ──────────────────────────────────────────────────────────────────
 function renderLobby(state, content, hostControls) {
   const players = state.lobbyPlayers || [];
+  const maxPlayers = state.maxPlayers || 30;
+  const spotsLeft = maxPlayers - players.length;
 
   content.innerHTML = `
     <div class="phase-header">
@@ -626,7 +692,12 @@ function renderLobby(state, content, hostControls) {
       <div class="lobby-code-hint">Share this code with your players</div>
     </div>
 
-    <div class="section-label">${players.length} Player${players.length !== 1 ? 's' : ''} Joined</div>
+    <div class="lobby-player-count-row">
+      <span class="section-label" style="margin-bottom:0">${players.length} / ${maxPlayers} Player${players.length !== 1 ? 's' : ''} Joined</span>
+      ${spotsLeft > 0
+        ? `<span class="lobby-spots-left">${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left</span>`
+        : `<span class="lobby-spots-left lobby-full">Full</span>`}
+    </div>
     <div class="player-list" id="lobby-player-list">
       ${players.map(p => `
         <div class="player-card ${p.isHost ? 'host-badge' : ''} ${p.id === myId ? 'is-me' : ''}">
@@ -641,20 +712,178 @@ function renderLobby(state, content, hostControls) {
         </div>
       `).join('')}
     </div>
+
   `;
 
+  // Wire up in-lobby advanced settings (host only) — panel lives inside the host bar
   if (state.isHost) {
+    let lobbyMaxPlayers = maxPlayers;
+    let lobbyEgt = state.endGameThreshold || 5;
+    let lobbyHrt = state.hideRoleThreshold || 4;
+
     const canStart = players.length >= 4;
+    const threshold = state.endGameThreshold || 5;
+    const hideAt    = state.hideRoleThreshold || 4;
+    const tieMode   = state.tieBreakerMode || 'random';
+
     hostControls.innerHTML = `
-      ${state.numTraitors !== undefined ? `<p class="text-center text-muted mb-8" style="font-size:0.8rem">Starting with <strong style="color:var(--gold)">${state.numTraitors}</strong> ${currentTheme.traitorName}${state.numTraitors !== 1 ? 's' : ''}</p>` : ''}
-      <button class="btn btn-primary btn-large" id="btn-start" ${canStart ? '' : 'disabled'}>
-        Start Game (${players.length} players)
-      </button>
+      <!-- Settings panel — visibility restored from lobbySettingsOpen flag -->
+      <div id="lobby-settings-panel" class="lobby-settings-panel-inner" style="display:${lobbySettingsOpen ? 'block' : 'none'}">
+        <div class="advanced-setting-row">
+          <div class="advanced-setting-label">Max Players</div>
+          <div class="advanced-setting-hint">Limit how many can join (3–30). Currently: <span id="lobby-maxplayers-hint">${lobbyMaxPlayers}</span>.</div>
+          <div class="traitor-picker" style="margin-top:8px">
+            <button class="btn-stepper" id="btn-lobby-maxplayers-down">−</button>
+            <span id="lobby-maxplayers-display">${lobbyMaxPlayers}</span>
+            <button class="btn-stepper" id="btn-lobby-maxplayers-up">+</button>
+          </div>
+        </div>
+        <div class="advanced-setting-row">
+          <div class="advanced-setting-label">🔥 Finale — Player Count</div>
+          <div class="advanced-setting-hint">Auto-triggers when this many players remain after a banishment (3–6). Currently: <span id="lobby-egt-hint">${lobbyEgt}</span>.</div>
+          <div class="traitor-picker" style="margin-top:8px">
+            <button class="btn-stepper" id="btn-lobby-egt-down">−</button>
+            <span id="lobby-egt-display">${lobbyEgt}</span>
+            <button class="btn-stepper" id="btn-lobby-egt-up">+</button>
+          </div>
+        </div>
+        <div class="advanced-setting-row">
+          <div class="advanced-setting-label">🎭 Hide Identity Reveals After</div>
+          <div class="advanced-setting-hint">Stop showing banished roles when this many (or fewer) players remain (3–6). Currently: <span id="lobby-hrt-hint">${lobbyHrt}</span>.</div>
+          <div class="traitor-picker" style="margin-top:8px">
+            <button class="btn-stepper" id="btn-lobby-hrt-down">−</button>
+            <span id="lobby-hrt-display">${lobbyHrt}</span>
+            <button class="btn-stepper" id="btn-lobby-hrt-up">+</button>
+          </div>
+        </div>
+        <div class="advanced-setting-row">
+          <div class="advanced-setting-label">⚖️ Persistent Tie Breaker</div>
+          <div class="advanced-setting-hint">If the runoff vote is also tied, how should it be resolved?</div>
+          <div class="setting-toggle-group" id="lobby-tie-breaker-toggle" style="margin-top:8px">
+            <button class="setting-toggle-btn ${tieMode === 'host' ? 'active' : ''}" data-value="host">👑 Host Chooses</button>
+            <button class="setting-toggle-btn ${tieMode === 'random' ? 'active' : ''}" data-value="random">🎲 Random Draw</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Start button row + settings gear -->
+      <div class="lobby-start-row">
+        <button class="btn-lobby-settings-gear ${lobbySettingsOpen ? 'active' : ''}" id="btn-lobby-settings-toggle" title="Game Settings">
+          ⚙️
+        </button>
+        <button class="btn btn-primary btn-large lobby-start-btn" id="btn-start" ${canStart ? '' : 'disabled'}>
+          Start Game (${players.length})
+        </button>
+      </div>
       ${!canStart ? '<p class="text-center text-muted" style="font-size:0.75rem;margin-top:4px">Need at least 4 players</p>' : ''}
+      <p class="lobby-settings-summary">${state.numTraitors !== undefined ? `${state.numTraitors} ${currentTheme.traitorName}${state.numTraitors !== 1 ? 's' : ''} &nbsp;·&nbsp; 🔥 Finale ${threshold} &nbsp;·&nbsp; 🎭 Hide @${hideAt} &nbsp;·&nbsp; ⚖️ ${tieMode === 'random' ? 'Random' : 'Host'} pick` : ''}</p>
     `;
+
+    // Settings gear toggle — uses module-level flag so re-renders keep the panel open
+    document.getElementById('btn-lobby-settings-toggle').addEventListener('click', () => {
+      lobbySettingsOpen = !lobbySettingsOpen;
+      const panel = document.getElementById('lobby-settings-panel');
+      const gear  = document.getElementById('btn-lobby-settings-toggle');
+      panel.style.display = lobbySettingsOpen ? 'block' : 'none';
+      gear.classList.toggle('active', lobbySettingsOpen);
+    });
+
+    // Start button
     document.getElementById('btn-start')?.addEventListener('click', () => {
       socket.emit('start_game', {}, (res) => {
         if (res.error) showToast('⚠️ ' + res.error);
+      });
+    });
+
+    // Max players stepper
+    const maxDisplay = document.getElementById('lobby-maxplayers-display');
+    const maxHint    = document.getElementById('lobby-maxplayers-hint');
+    function updateLobbyMaxDisplay() {
+      maxDisplay.textContent = lobbyMaxPlayers;
+      if (maxHint) maxHint.textContent = lobbyMaxPlayers;
+    }
+    document.getElementById('btn-lobby-maxplayers-down').addEventListener('click', () => {
+      const minAllowed = Math.max(3, players.length);
+      if (lobbyMaxPlayers > minAllowed) {
+        lobbyMaxPlayers--;
+        updateLobbyMaxDisplay();
+        socket.emit('update_lobby_settings', { maxPlayers: lobbyMaxPlayers }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+    document.getElementById('btn-lobby-maxplayers-up').addEventListener('click', () => {
+      if (lobbyMaxPlayers < 30) {
+        lobbyMaxPlayers++;
+        updateLobbyMaxDisplay();
+        socket.emit('update_lobby_settings', { maxPlayers: lobbyMaxPlayers }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+
+    // Finale threshold stepper
+    const egtDisplay = document.getElementById('lobby-egt-display');
+    const egtHint    = document.getElementById('lobby-egt-hint');
+    function updateLobbyEgtDisplay() {
+      egtDisplay.textContent = lobbyEgt;
+      if (egtHint) egtHint.textContent = lobbyEgt;
+    }
+    document.getElementById('btn-lobby-egt-down').addEventListener('click', () => {
+      if (lobbyEgt > 3) {
+        lobbyEgt--;
+        updateLobbyEgtDisplay();
+        socket.emit('update_lobby_settings', { endGameThreshold: lobbyEgt }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+    document.getElementById('btn-lobby-egt-up').addEventListener('click', () => {
+      if (lobbyEgt < 6) {
+        lobbyEgt++;
+        updateLobbyEgtDisplay();
+        socket.emit('update_lobby_settings', { endGameThreshold: lobbyEgt }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+
+    // Hide role threshold stepper
+    const hrtDisplay = document.getElementById('lobby-hrt-display');
+    const hrtHint    = document.getElementById('lobby-hrt-hint');
+    function updateLobbyHrtDisplay() {
+      hrtDisplay.textContent = lobbyHrt;
+      if (hrtHint) hrtHint.textContent = lobbyHrt;
+    }
+    document.getElementById('btn-lobby-hrt-down').addEventListener('click', () => {
+      if (lobbyHrt > 3) {
+        lobbyHrt--;
+        updateLobbyHrtDisplay();
+        socket.emit('update_lobby_settings', { hideRoleThreshold: lobbyHrt }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+    document.getElementById('btn-lobby-hrt-up').addEventListener('click', () => {
+      if (lobbyHrt < 6) {
+        lobbyHrt++;
+        updateLobbyHrtDisplay();
+        socket.emit('update_lobby_settings', { hideRoleThreshold: lobbyHrt }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+
+    // Tie breaker toggle
+    document.querySelectorAll('#lobby-tie-breaker-toggle .setting-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.value;
+        document.querySelectorAll('#lobby-tie-breaker-toggle .setting-toggle-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.value === val);
+        });
+        socket.emit('update_lobby_settings', { tieBreakerMode: val }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
       });
     });
   } else {
@@ -1046,25 +1275,12 @@ function renderMorning(state, content, hostControls) {
 
     // Host controls: Proceed to Round Table (only shown after reveal is done)
     if (state.isHost) {
-      const endGameAvail = state.canTriggerEndGame;
       hostControls.innerHTML = `
         <button class="btn btn-primary btn-large" id="btn-to-round-table">
           ☀️ Proceed to Round Table
         </button>
-        ${endGameAvail ? `
-          <button class="btn btn-teal btn-large" id="btn-trigger-end-game">
-            🏁 Trigger End Game
-          </button>
-        ` : ''}
       `;
       attachRoundTableButton();
-      document.getElementById('btn-trigger-end-game')?.addEventListener('click', () => {
-        if (confirm('Trigger end game mode? No more murders will occur.')) {
-          socket.emit('trigger_end_game', {}, (res) => {
-            if (res.error) showToast('⚠️ ' + res.error);
-          });
-        }
-      });
     }
   } else {
     // During reveal, host sees a status message (no button — timer runs automatically)
@@ -1096,48 +1312,44 @@ function buildAliveList(state) {
 
 // ─── ROUND TABLE ────────────────────────────────────────────────────────────
 function renderRoundTable(state, content, hostControls) {
+  const threshold = state.endGameThreshold || 5;
+  const alive = (state.alivePlayers || []).length;
+
   content.innerHTML = `
     <div class="phase-header">
       <div class="phase-eyebrow">Round ${state.round || ''}</div>
       <div class="phase-title">${currentTheme.roundTableTitle}</div>
-      <div class="phase-subtitle">${state.isEndGameMode ? 'End Game Mode' : currentTheme.roundTableSubtitle}</div>
+      <div class="phase-subtitle">${state.isEndGameMode ? '🔥 The Finale — Final Votes' : currentTheme.roundTableSubtitle}</div>
     </div>
 
     ${state.isEndGameMode ? `
       <div class="info-box gold mb-16">
         <p style="color:var(--gold);font-size:0.85rem;text-align:center">
-          🏁 End Game Mode — No more murders will take place.<br>
-          After voting, players may choose to end the game or continue banishing.
+          🔥 The Finale — no more murders.<br>
+          After banishment, players vote to end the game or keep banishing.
         </p>
       </div>
-    ` : ''}
+    ` : `
+      <div class="info-box mb-16" style="background:rgba(212,160,23,0.06);border-color:rgba(212,160,23,0.2)">
+        <p style="color:var(--text-muted);font-size:0.78rem;text-align:center">
+          🔥 Finale triggers automatically when ${threshold} player${threshold !== 1 ? 's' : ''} remain
+        </p>
+      </div>
+    `}
 
     ${buildAliveList(state)}
   `;
 
   if (state.isHost) {
-    const endGameAvail = state.canTriggerEndGame && !state.isEndGameMode;
     hostControls.innerHTML = `
       <button class="btn btn-primary btn-large" id="btn-open-voting">
         🗳️ Open Voting
       </button>
-      ${endGameAvail ? `
-        <button class="btn btn-teal" style="padding:14px;border-radius:var(--radius-md);font-size:0.85rem" id="btn-trigger-end-game">
-          🏁 Trigger End Game
-        </button>
-      ` : ''}
     `;
     document.getElementById('btn-open-voting')?.addEventListener('click', () => {
       socket.emit('open_voting', {}, (res) => {
         if (res.error) showToast('⚠️ ' + res.error);
       });
-    });
-    document.getElementById('btn-trigger-end-game')?.addEventListener('click', () => {
-      if (confirm('Trigger end game mode? No more murders will occur.')) {
-        socket.emit('trigger_end_game', {}, (res) => {
-          if (res.error) showToast('⚠️ ' + res.error);
-        });
-      }
     });
   } else {
     document.getElementById('host-bar').classList.add('hidden');
@@ -1275,11 +1487,19 @@ function renderVoteReveal(state, content, hostControls, isRunoff) {
 
   const maxCount = tallies.length > 0 ? tallies[0].count : 1;
 
+  const isTieBroken = !!(state.tieBrokenCandidates && state.tieBrokenCandidates.length > 0);
+
   content.innerHTML = `
     <div class="phase-header">
       <div class="phase-eyebrow">${isRunoff ? 'Runoff — ' : ''}${currentTheme.voteEyebrow}</div>
-      <div class="phase-title">${revealComplete ? 'The Verdict' : 'Revealing Votes...'}</div>
+      <div class="phase-title">${isTieBroken ? 'Still Tied!' : revealComplete ? 'The Verdict' : 'Revealing Votes...'}</div>
     </div>
+
+    ${isTieBroken && !state.isHost ? `
+      <div class="info-box gold mb-16" style="text-align:center">
+        <p style="color:var(--gold);font-size:0.9rem">⚖️ The runoff was also tied.<br>The host is deciding who is banished.</p>
+      </div>
+    ` : ''}
 
     ${tallies.length > 0 ? `
       <div class="section-label mb-8">Vote Tallies</div>
@@ -1316,6 +1536,26 @@ function renderVoteReveal(state, content, hostControls, isRunoff) {
   `;
 
   if (state.isHost && revealComplete) {
+    // If the runoff was ALSO tied and mode is 'host' — show the candidate pick UI
+    if (state.tieBrokenCandidates && state.tieBrokenCandidates.length > 0) {
+      hostControls.innerHTML = `
+        <p class="text-center text-muted mb-8" style="font-size:0.8rem">
+          Still tied after runoff — you must choose who is banished.
+        </p>
+        ${state.tieBrokenCandidates.map(c => `
+          <button class="btn btn-danger btn-large" style="margin-bottom:6px" data-id="${c.id}" id="btn-host-pick-${c.id}">
+            ⚖️ Banish ${escHtml(c.name)}
+          </button>
+        `).join('')}
+      `;
+      state.tieBrokenCandidates.forEach(c => {
+        document.getElementById(`btn-host-pick-${c.id}`)?.addEventListener('click', () => {
+          socket.emit('host_break_tie', { targetId: c.id }, (res) => {
+            if (res.error) showToast('⚠️ ' + res.error);
+          });
+        });
+      });
+    } else {
     hostControls.innerHTML = `
       <button class="btn btn-danger btn-large" id="btn-resolve-votes">
         ⚖️ Proceed to Verdict
@@ -1329,10 +1569,14 @@ function renderVoteReveal(state, content, hostControls, isRunoff) {
           showToast('⚖️ It\'s a tie! Runoff vote begins.', 4000);
         }
         if (res.result?.tieBroken) {
-          showToast('Still tied! Host must break the tie.', 4000);
+            showToast('⚖️ Still tied! Choose who to banish.', 4000);
+          }
+          if (res.result?.randomlyChosen) {
+            showToast('🎲 Still tied — fate has decided!', 4000);
         }
       });
     });
+    }
   } else if (state.isHost) {
     hostControls.innerHTML = `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Revealing votes...</p>`;
   }
@@ -1435,8 +1679,8 @@ function renderRunoffVoting(state, content, hostControls) {
 // ─── BANISHMENT ─────────────────────────────────────────────────────────────
 function renderBanishment(state, content, hostControls, phaseChanged) {
   const banishedName = state.banishedName || '???';
-  const banishedRole = state.banishedRole;
   const isMe = state.banishedId === myId;
+  const hideRole = !!state.hideRole;
 
   // Stop any existing countdown
   if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
@@ -1458,7 +1702,9 @@ function renderBanishment(state, content, hostControls, phaseChanged) {
           </svg>
           <div class="countdown-number" id="countdown-num">5</div>
         </div>
-        <p style="color:var(--text-muted);font-style:italic;font-size:0.9rem">Revealing role in...</p>
+        <p style="color:var(--text-muted);font-style:italic;font-size:0.9rem">
+          ${hideRole ? 'Departing in...' : 'Revealing role in...'}
+        </p>
       </div>
     </div>
   `;
@@ -1479,7 +1725,7 @@ function renderBanishment(state, content, hostControls, phaseChanged) {
       clearInterval(countdownInterval);
       countdownInterval = null;
       showBanishmentRole(state);
-      // Auto-execute banishment on host after showing role
+      // Auto-execute banishment on host after showing role (or mystery card)
       if (state.isHost) {
         setTimeout(() => {
           socket.emit('execute_banishment', {}, (res) => {
@@ -1495,13 +1741,26 @@ function renderBanishment(state, content, hostControls, phaseChanged) {
   }
 
   if (state.isHost) {
-    hostControls.innerHTML = `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Role reveal in progress...</p>`;
+    hostControls.innerHTML = `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">${hideRole ? 'Banishment in progress...' : 'Role reveal in progress...'}</p>`;
   }
 }
 
 function showBanishmentRole(state) {
   const area = document.getElementById('banishment-reveal-area');
   if (!area) return;
+
+  if (state.hideRole || !state.banishedRole) {
+    // Identity is secret — show a mystery card
+    area.innerHTML = `
+      <div class="role-reveal-result">
+        <div style="font-size:3.5rem;margin-bottom:8px">🎭</div>
+        <div class="result-label">Their identity</div>
+        <div class="result-role" style="color:var(--text-muted);letter-spacing:0.15em">remains a secret</div>
+      </div>
+    `;
+    return;
+  }
+
   const role = state.banishedRole;
   const isTraitor = role === 'TRAITOR';
 
@@ -1750,7 +2009,7 @@ function showTipModal() {
   setTimeout(() => {
     overlay.classList.remove('hidden');
     overlay.classList.add('visible');
-  }, 1200);
+  }, 7000);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1776,12 +2035,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const tipBarLink = document.querySelector('.tip-jar-link');
   if (tipBarLink) tipBarLink.href = TIP_JAR_URL;
 
-  // Modal close button
-  document.getElementById('tip-modal-close')?.addEventListener('click', () => {
+  // Modal close / dismiss buttons — both hide the overlay
+  function closeTipModal() {
     const overlay = document.getElementById('tip-modal-overlay');
     overlay?.classList.remove('visible');
     overlay?.classList.add('hidden');
-  });
+  }
+  document.getElementById('tip-modal-close')?.addEventListener('click', closeTipModal);
+  document.getElementById('tip-modal-dismiss')?.addEventListener('click', closeTipModal);
 
   // Close modal on overlay click
   document.getElementById('tip-modal-overlay')?.addEventListener('click', (e) => {
