@@ -2437,3 +2437,363 @@ body[data-theme="cowboys"] .tip-jar-link:hover {
   border-color: rgba(232,184,75,0.4);
   background: rgba(232,184,75,0.06);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BLOOD COURT THEME  🧛
+   Deep crimson / purple-black palette — gothic, campy, dramatic
+═══════════════════════════════════════════════════════════════════════════ */
+body[data-theme="vampire"] {
+  --bg-dark:      #0a0008;
+  --bg-mid:       #130010;
+  --bg-card:      #1c0018;
+  --bg-card2:     #270022;
+  --border:       #400035;
+  --border-gold:  #8b0040;
+  --gold:         #cc1a5a;
+  --gold-light:   #ff4d8a;
+  --gold-dim:     #5c0028;
+  --traitor-color:#cc1a5a;
+  --faithful-color:#1a6b8a;
+}
+
+body[data-theme="vampire"] #screen-landing {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(204,26,90,0.2) 0%, transparent 70%),
+    linear-gradient(180deg, #0a0008 0%, #130010 100%);
+}
+
+body[data-theme="vampire"] .castle-icon {
+  filter: drop-shadow(0 0 28px rgba(204,26,90,0.6));
+}
+
+body[data-theme="vampire"] .title-main {
+  color: var(--gold-light);
+  text-shadow:
+    0 0 40px rgba(204,26,90,0.65),
+    0 2px 0 rgba(0,0,0,0.9);
+}
+
+body[data-theme="vampire"] .btn-primary {
+  background: linear-gradient(135deg, #cc1a5a 0%, #5c0028 100%);
+  color: #fff0f4;
+  box-shadow: 0 4px 20px rgba(204,26,90,0.4);
+}
+body[data-theme="vampire"] .btn-primary:hover {
+  box-shadow: 0 4px 28px rgba(204,26,90,0.65);
+}
+
+body[data-theme="vampire"] .lobby-code {
+  text-shadow: 0 0 30px rgba(204,26,90,0.6);
+}
+
+body[data-theme="vampire"] .tally-bar-fill {
+  background: linear-gradient(90deg, #5c0028, #cc1a5a);
+}
+
+body[data-theme="vampire"] .countdown-fill { stroke: var(--gold); }
+body[data-theme="vampire"] .host-bar { border-top-color: var(--border-gold); }
+
+body[data-theme="vampire"] .btn-ghost {
+  color: var(--gold);
+  border-color: var(--border-gold);
+}
+body[data-theme="vampire"] .btn-ghost:hover {
+  background: rgba(92,0,40,0.25);
+}
+
+body[data-theme="vampire"] .vote-progress-fill {
+  background: linear-gradient(90deg, #5c0028, #cc1a5a);
+}
+
+body[data-theme="vampire"] .role-badge.traitor {
+  background: rgba(204,26,90,0.22);
+  color: #ff4d8a;
+  border: 1px solid rgba(204,26,90,0.5);
+}
+body[data-theme="vampire"] .role-badge.faithful {
+  background: rgba(26,107,138,0.22);
+  color: #5ab8d8;
+  border: 1px solid rgba(26,107,138,0.5);
+}
+
+body[data-theme="vampire"] .toast {
+  border-color: var(--border-gold);
+  color: var(--gold-light);
+}
+
+body[data-theme="vampire"] .tip-modal-title { color: #ff4d8a; }
+body[data-theme="vampire"] .tip-jar-link:hover {
+  color: #ff4d8a;
+  border-color: rgba(204,26,90,0.45);
+  background: rgba(204,26,90,0.07);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MASQUERADE THEME  🎭
+   Midnight blue / antique gold — opulent ballroom, candlelit mystery
+═══════════════════════════════════════════════════════════════════════════ */
+body[data-theme="masquerade"] {
+  --bg-dark:      #070510;
+  --bg-mid:       #0d0a1c;
+  --bg-card:      #141026;
+  --bg-card2:     #1c1730;
+  --border:       #2e2850;
+  --border-gold:  #7a6030;
+  --gold:         #c8a050;
+  --gold-light:   #f0d080;
+  --gold-dim:     #5a4420;
+  --traitor-color:#8b1a2e;
+  --faithful-color:#1a4a7a;
+}
+
+body[data-theme="masquerade"] #screen-landing {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(200,160,80,0.16) 0%, transparent 70%),
+    linear-gradient(180deg, #070510 0%, #0d0a1c 100%);
+}
+
+body[data-theme="masquerade"] .castle-icon {
+  filter: drop-shadow(0 0 28px rgba(200,160,80,0.5));
+}
+
+body[data-theme="masquerade"] .title-main {
+  color: var(--gold-light);
+  text-shadow:
+    0 0 40px rgba(200,160,80,0.5),
+    0 2px 0 rgba(0,0,0,0.9);
+}
+
+body[data-theme="masquerade"] .btn-primary {
+  background: linear-gradient(135deg, #c8a050 0%, #5a4420 100%);
+  color: #07050f;
+  box-shadow: 0 4px 20px rgba(200,160,80,0.35);
+}
+body[data-theme="masquerade"] .btn-primary:hover {
+  box-shadow: 0 4px 28px rgba(200,160,80,0.55);
+}
+
+body[data-theme="masquerade"] .lobby-code {
+  text-shadow: 0 0 30px rgba(200,160,80,0.5);
+}
+
+body[data-theme="masquerade"] .tally-bar-fill {
+  background: linear-gradient(90deg, #5a4420, #c8a050);
+}
+
+body[data-theme="masquerade"] .countdown-fill { stroke: var(--gold); }
+body[data-theme="masquerade"] .host-bar { border-top-color: var(--border-gold); }
+
+body[data-theme="masquerade"] .btn-ghost {
+  color: var(--gold);
+  border-color: var(--border-gold);
+}
+body[data-theme="masquerade"] .btn-ghost:hover {
+  background: rgba(90,68,32,0.22);
+}
+
+body[data-theme="masquerade"] .vote-progress-fill {
+  background: linear-gradient(90deg, #5a4420, #c8a050);
+}
+
+body[data-theme="masquerade"] .role-badge.traitor {
+  background: rgba(139,26,46,0.22);
+  color: #d44060;
+  border: 1px solid rgba(139,26,46,0.5);
+}
+body[data-theme="masquerade"] .role-badge.faithful {
+  background: rgba(26,74,122,0.22);
+  color: #5090d8;
+  border: 1px solid rgba(26,74,122,0.5);
+}
+
+body[data-theme="masquerade"] .toast {
+  border-color: var(--border-gold);
+  color: var(--gold-light);
+}
+
+body[data-theme="masquerade"] .tip-modal-title { color: #f0d080; }
+body[data-theme="masquerade"] .tip-jar-link:hover {
+  color: #f0d080;
+  border-color: rgba(200,160,80,0.4);
+  background: rgba(200,160,80,0.06);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HIGH TREASON THEME  🍵
+   British racing green / dark mahogany — distinguished, dry, dangerous
+═══════════════════════════════════════════════════════════════════════════ */
+body[data-theme="hightreason"] {
+  --bg-dark:      #040908;
+  --bg-mid:       #081210;
+  --bg-card:      #0d1e1a;
+  --bg-card2:     #142820;
+  --border:       #1e3c2e;
+  --border-gold:  #4a7040;
+  --gold:         #7ab060;
+  --gold-light:   #a8d888;
+  --gold-dim:     #305830;
+  --traitor-color:#8b2020;
+  --faithful-color:#1a4a6a;
+}
+
+body[data-theme="hightreason"] #screen-landing {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(122,176,96,0.15) 0%, transparent 70%),
+    linear-gradient(180deg, #040908 0%, #081210 100%);
+}
+
+body[data-theme="hightreason"] .castle-icon {
+  filter: drop-shadow(0 0 24px rgba(122,176,96,0.45));
+}
+
+body[data-theme="hightreason"] .title-main {
+  color: var(--gold-light);
+  text-shadow:
+    0 0 40px rgba(122,176,96,0.5),
+    0 2px 0 rgba(0,0,0,0.9);
+}
+
+body[data-theme="hightreason"] .btn-primary {
+  background: linear-gradient(135deg, #7ab060 0%, #305830 100%);
+  color: #040908;
+  box-shadow: 0 4px 20px rgba(122,176,96,0.3);
+}
+body[data-theme="hightreason"] .btn-primary:hover {
+  box-shadow: 0 4px 28px rgba(122,176,96,0.5);
+}
+
+body[data-theme="hightreason"] .lobby-code {
+  text-shadow: 0 0 30px rgba(122,176,96,0.5);
+}
+
+body[data-theme="hightreason"] .tally-bar-fill {
+  background: linear-gradient(90deg, #305830, #7ab060);
+}
+
+body[data-theme="hightreason"] .countdown-fill { stroke: var(--gold); }
+body[data-theme="hightreason"] .host-bar { border-top-color: var(--border-gold); }
+
+body[data-theme="hightreason"] .btn-ghost {
+  color: var(--gold);
+  border-color: var(--border-gold);
+}
+body[data-theme="hightreason"] .btn-ghost:hover {
+  background: rgba(48,88,48,0.22);
+}
+
+body[data-theme="hightreason"] .vote-progress-fill {
+  background: linear-gradient(90deg, #305830, #7ab060);
+}
+
+body[data-theme="hightreason"] .role-badge.traitor {
+  background: rgba(139,32,32,0.22);
+  color: #d46060;
+  border: 1px solid rgba(139,32,32,0.5);
+}
+body[data-theme="hightreason"] .role-badge.faithful {
+  background: rgba(26,74,106,0.22);
+  color: #50a0c8;
+  border: 1px solid rgba(26,74,106,0.5);
+}
+
+body[data-theme="hightreason"] .toast {
+  border-color: var(--border-gold);
+  color: var(--gold-light);
+}
+
+body[data-theme="hightreason"] .tip-modal-title { color: #a8d888; }
+body[data-theme="hightreason"] .tip-jar-link:hover {
+  color: #a8d888;
+  border-color: rgba(122,176,96,0.4);
+  background: rgba(122,176,96,0.06);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HIGH SEAS THEME  🏴‍☠️
+   Deep ocean blue / weathered copper — stormy, nautical, treacherous
+═══════════════════════════════════════════════════════════════════════════ */
+body[data-theme="pirates"] {
+  --bg-dark:      #02070f;
+  --bg-mid:       #040e1c;
+  --bg-card:      #071626;
+  --bg-card2:     #0c2038;
+  --border:       #14304a;
+  --border-gold:  #3a6878;
+  --gold:         #5ea8b8;
+  --gold-light:   #8ecfd8;
+  --gold-dim:     #1e4858;
+  --traitor-color:#b03020;
+  --faithful-color:#1a7a5e;
+}
+
+body[data-theme="pirates"] #screen-landing {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(94,168,184,0.18) 0%, transparent 70%),
+    linear-gradient(180deg, #02070f 0%, #040e1c 100%);
+}
+
+body[data-theme="pirates"] .castle-icon {
+  filter: drop-shadow(0 0 26px rgba(94,168,184,0.5));
+}
+
+body[data-theme="pirates"] .title-main {
+  color: var(--gold-light);
+  text-shadow:
+    0 0 40px rgba(94,168,184,0.55),
+    0 2px 0 rgba(0,0,0,0.9);
+}
+
+body[data-theme="pirates"] .btn-primary {
+  background: linear-gradient(135deg, #5ea8b8 0%, #1e4858 100%);
+  color: #020a10;
+  box-shadow: 0 4px 20px rgba(94,168,184,0.35);
+}
+body[data-theme="pirates"] .btn-primary:hover {
+  box-shadow: 0 4px 28px rgba(94,168,184,0.55);
+}
+
+body[data-theme="pirates"] .lobby-code {
+  text-shadow: 0 0 30px rgba(94,168,184,0.55);
+}
+
+body[data-theme="pirates"] .tally-bar-fill {
+  background: linear-gradient(90deg, #1e4858, #5ea8b8);
+}
+
+body[data-theme="pirates"] .countdown-fill { stroke: var(--gold); }
+body[data-theme="pirates"] .host-bar { border-top-color: var(--border-gold); }
+
+body[data-theme="pirates"] .btn-ghost {
+  color: var(--gold);
+  border-color: var(--border-gold);
+}
+body[data-theme="pirates"] .btn-ghost:hover {
+  background: rgba(30,72,88,0.25);
+}
+
+body[data-theme="pirates"] .vote-progress-fill {
+  background: linear-gradient(90deg, #1e4858, #5ea8b8);
+}
+
+body[data-theme="pirates"] .role-badge.traitor {
+  background: rgba(176,48,32,0.22);
+  color: #e07060;
+  border: 1px solid rgba(176,48,32,0.5);
+}
+body[data-theme="pirates"] .role-badge.faithful {
+  background: rgba(26,122,94,0.22);
+  color: #4ac8a8;
+  border: 1px solid rgba(26,122,94,0.5);
+}
+
+body[data-theme="pirates"] .toast {
+  border-color: var(--border-gold);
+  color: var(--gold-light);
+}
+
+body[data-theme="pirates"] .tip-modal-title { color: #8ecfd8; }
+body[data-theme="pirates"] .tip-jar-link:hover {
+  color: #8ecfd8;
+  border-color: rgba(94,168,184,0.4);
+  background: rgba(94,168,184,0.06);
+}
