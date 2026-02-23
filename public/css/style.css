@@ -505,8 +505,9 @@ html, body {
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.role-badge.traitor { background: rgba(192,57,43,0.3); color: #ff6b6b; border: 1px solid rgba(192,57,43,0.5); }
-.role-badge.faithful { background: rgba(26,122,94,0.3); color: #2ecc9a; border: 1px solid rgba(26,122,94,0.5); }
+/* Both roles use identical neutral styling — prevents role-colour leaking to nearby players */
+.role-badge.traitor,
+.role-badge.faithful { background: rgba(255,255,255,0.07); color: var(--text-dim); border: 1px solid var(--border); }
 
 /* ── Identity Toggle Button ─────────────────────────────────────────────── */
 .btn-identity-toggle {
@@ -1891,17 +1892,7 @@ body[data-theme="cowboys"] .btn-ghost:hover {
   background: rgba(122,72,0,0.2);
 }
 
-/* alien green for ALIEN role badge (traitor slot) */
-body[data-theme="cowboys"] .role-badge.traitor {
-  background: rgba(58,138,42,0.25);
-  color: #7ddd60;
-  border: 1px solid rgba(58,138,42,0.5);
-}
-body[data-theme="cowboys"] .role-badge.faithful {
-  background: rgba(26,90,142,0.25);
-  color: #5ab0f0;
-  border: 1px solid rgba(26,90,142,0.5);
-}
+/* role badges intentionally neutral — no per-theme colour overrides */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    QUEERS VS STRAIGHTS THEME  🏳️‍🌈
@@ -1979,17 +1970,7 @@ body[data-theme="queer"] .vote-progress-fill {
   background: linear-gradient(90deg, #8000a8, #e040fb);
 }
 
-/* QUEER (faithful) = vibrant pink badge; STRAIGHT (traitor) = boring gray */
-body[data-theme="queer"] .role-badge.faithful {
-  background: rgba(224,64,251,0.25);
-  color: #f090ff;
-  border: 1px solid rgba(224,64,251,0.5);
-}
-body[data-theme="queer"] .role-badge.traitor {
-  background: rgba(120,120,120,0.2);
-  color: #a0a0a0;
-  border: 1px solid rgba(120,120,120,0.4);
-}
+/* role badges intentionally neutral — no per-theme colour overrides */
 
 /* game-over faithful = rainbow gradient for queer win */
 body[data-theme="queer"] .game-over-winner.faithful {
@@ -2505,16 +2486,7 @@ body[data-theme="vampire"] .vote-progress-fill {
   background: linear-gradient(90deg, #5c0028, #cc1a5a);
 }
 
-body[data-theme="vampire"] .role-badge.traitor {
-  background: rgba(204,26,90,0.22);
-  color: #ff4d8a;
-  border: 1px solid rgba(204,26,90,0.5);
-}
-body[data-theme="vampire"] .role-badge.faithful {
-  background: rgba(26,107,138,0.22);
-  color: #5ab8d8;
-  border: 1px solid rgba(26,107,138,0.5);
-}
+/* role badges intentionally neutral — no per-theme colour overrides */
 
 body[data-theme="vampire"] .toast {
   border-color: var(--border-gold);
@@ -2595,16 +2567,7 @@ body[data-theme="masquerade"] .vote-progress-fill {
   background: linear-gradient(90deg, #5a4420, #c8a050);
 }
 
-body[data-theme="masquerade"] .role-badge.traitor {
-  background: rgba(139,26,46,0.22);
-  color: #d44060;
-  border: 1px solid rgba(139,26,46,0.5);
-}
-body[data-theme="masquerade"] .role-badge.faithful {
-  background: rgba(26,74,122,0.22);
-  color: #5090d8;
-  border: 1px solid rgba(26,74,122,0.5);
-}
+/* role badges intentionally neutral — no per-theme colour overrides */
 
 body[data-theme="masquerade"] .toast {
   border-color: var(--border-gold);
@@ -2685,16 +2648,7 @@ body[data-theme="hightreason"] .vote-progress-fill {
   background: linear-gradient(90deg, #305830, #7ab060);
 }
 
-body[data-theme="hightreason"] .role-badge.traitor {
-  background: rgba(139,32,32,0.22);
-  color: #d46060;
-  border: 1px solid rgba(139,32,32,0.5);
-}
-body[data-theme="hightreason"] .role-badge.faithful {
-  background: rgba(26,74,106,0.22);
-  color: #50a0c8;
-  border: 1px solid rgba(26,74,106,0.5);
-}
+/* role badges intentionally neutral — no per-theme colour overrides */
 
 body[data-theme="hightreason"] .toast {
   border-color: var(--border-gold);
@@ -2775,16 +2729,7 @@ body[data-theme="pirates"] .vote-progress-fill {
   background: linear-gradient(90deg, #1e4858, #5ea8b8);
 }
 
-body[data-theme="pirates"] .role-badge.traitor {
-  background: rgba(176,48,32,0.22);
-  color: #e07060;
-  border: 1px solid rgba(176,48,32,0.5);
-}
-body[data-theme="pirates"] .role-badge.faithful {
-  background: rgba(26,122,94,0.22);
-  color: #4ac8a8;
-  border: 1px solid rgba(26,122,94,0.5);
-}
+/* role badges intentionally neutral — no per-theme colour overrides */
 
 body[data-theme="pirates"] .toast {
   border-color: var(--border-gold);
