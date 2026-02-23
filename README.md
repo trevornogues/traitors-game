@@ -1,6 +1,18 @@
 # Social Deduction — Party Game
 
-A mobile web app for playing a social deduction party game with friends in person. Runs on your laptop, everyone connects on their phones via Wi-Fi. No app install needed.
+A mobile web app for playing a social deduction party game with friends in person. Everyone connects on their phones — no app install needed.
+
+---
+
+## 🌐 Live Demo
+
+A hosted version is available — no setup required:
+
+**[https://social-deduction-game-unrz.onrender.com](https://social-deduction-game-unrz.onrender.com)**
+
+Just open that URL on any device, share it with your group, and play. All players need is a browser and an internet connection.
+
+> Want to self-host instead? See **Setup & Running** below.
 
 ---
 
