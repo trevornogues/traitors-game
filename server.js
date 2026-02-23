@@ -125,8 +125,8 @@ io.on('connection', (socket) => {
     if (!name || !numTraitors) return cb({ error: 'Missing fields' });
     const n = parseInt(numTraitors);
     if (isNaN(n) || n < 1 || n > 8) return cb({ error: 'Invalid traitor count (1–8)' });
-    const validThemes = ['traitors', 'werewolf', 'mole', 'cowboys', 'queer'];
-    const t = validThemes.includes(theme) ? theme : 'traitors';
+    const validThemes = ['traitors', 'werewolf', 'mole', 'cowboys', 'queer', 'vampire', 'masquerade', 'hightreason', 'pirates'];
+    const t = validThemes.includes(theme) ? theme : 'vampire';
     const mp  = Math.min(30, Math.max(3, parseInt(maxPlayers) || 30));
     const egt = Math.min(6,  Math.max(3, parseInt(endGameThreshold) || 5));
     const hrt = Math.min(6,  Math.max(3, parseInt(hideRoleThreshold) || 4));
