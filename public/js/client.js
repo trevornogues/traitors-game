@@ -1104,6 +1104,8 @@ function renderLobby(state, content, hostControls) {
     let lobbyNct = state.nightChallengeTarget || 10000;
     let lobbyPrizeMode = state.prizeMode || 'CASH';
     let lobbySpnTicks = state.shotsPerNightTicks || Math.max(1, Math.min(20, Math.round((state.shotsPerNight || 1) * 4)));
+    let lobbyFrt = state.forcedRecruitThreshold !== undefined ? state.forcedRecruitThreshold : 6;
+    let lobbyR2t = state.recruitOnTwoTraitors !== undefined ? state.recruitOnTwoTraitors : true;
     const lobbyNightChallengesAll = (Array.isArray(state.nightChallengesAll) && state.nightChallengesAll.length)
       ? state.nightChallengesAll
       : NIGHT_CHALLENGE_OPTIONS.map(o => o.id);
@@ -1118,6 +1120,8 @@ function renderLobby(state, content, hostControls) {
     const nct       = state.nightChallengeTarget || 10000;
     const pm        = state.prizeMode || 'CASH';
     const spnTicks  = state.shotsPerNightTicks || Math.max(1, Math.min(20, Math.round((state.shotsPerNight || 1) * 4)));
+    const frt       = state.forcedRecruitThreshold !== undefined ? state.forcedRecruitThreshold : 6;
+    const r2t       = state.recruitOnTwoTraitors !== undefined ? state.recruitOnTwoTraitors : true;
 
     hostControls.innerHTML = `
       <!-- Settings panel — visibility restored from lobbySettingsOpen flag -->
@@ -1192,6 +1196,23 @@ function renderLobby(state, content, hostControls) {
           </div>
         </div>
         <div class="advanced-setting-row">
+          <div class="advanced-setting-label">🩸 Forced Recruit — Min Players</div>
+          <div class="advanced-setting-hint">When only 1 traitor remains, they <em>must</em> recruit (instead of murder) if this many or more players are alive (4–10). Currently: <span id="lobby-frt-hint">${lobbyFrt}</span>.</div>
+          <div class="traitor-picker" style="margin-top:8px">
+            <button class="btn-stepper" id="btn-lobby-frt-down">−</button>
+            <span id="lobby-frt-display">${lobbyFrt}</span>
+            <button class="btn-stepper" id="btn-lobby-frt-up">+</button>
+          </div>
+        </div>
+        <div class="advanced-setting-row">
+          <div class="advanced-setting-label">🤝 Recruit When Down to 2 Traitors</div>
+          <div class="advanced-setting-hint">When a traitor is banished and 2+ traitors remain, allow a one-time optional recruitment that night.</div>
+          <div class="setting-toggle-group" id="lobby-r2t-toggle" style="margin-top:8px">
+            <button class="setting-toggle-btn ${r2t ? 'active' : ''}" data-value="on">✅ Allowed</button>
+            <button class="setting-toggle-btn ${!r2t ? 'active' : ''}" data-value="off">🚫 Disabled</button>
+          </div>
+        </div>
+        <div class="advanced-setting-row">
           <div class="advanced-setting-label">🎲 Night Challenges</div>
           <div class="advanced-setting-hint">Toggle which mini-games can appear at night. At least one must stay enabled.</div>
           <div class="challenge-toggle-grid" id="lobby-night-challenges" style="margin-top:8px">
@@ -1214,7 +1235,7 @@ function renderLobby(state, content, hostControls) {
         </button>
       </div>
       ${!canStart ? '<p class="text-center text-muted" style="font-size:0.75rem;margin-top:4px">Need at least 4 players</p>' : ''}
-      <p class="lobby-settings-summary">${state.numTraitors !== undefined ? `${state.numTraitors} ${currentTheme.traitorName}${state.numTraitors !== 1 ? 's' : ''} &nbsp;·&nbsp; ${state.roleAssignmentMode === 'weighted' ? '⚖️ Weighted' : '🎲 Random'} &nbsp;·&nbsp; 🏆 ${pm === 'SHOTS' ? 'Shots' : 'Cash'} &nbsp;·&nbsp; ${pm === 'SHOTS' ? `🥃 up to ${formatShots(spnTicks)} / night (25% steps)` : `💰 ${formatMoney(nct)}/night`} &nbsp;·&nbsp; 🔥 Finale ${threshold} &nbsp;·&nbsp; 🎭 Hide @${hideAt} &nbsp;·&nbsp; ⚖️ ${tieMode === 'random' ? 'Random' : 'Host'} pick` : ''}</p>
+      <p class="lobby-settings-summary">${state.numTraitors !== undefined ? `${state.numTraitors} ${currentTheme.traitorName}${state.numTraitors !== 1 ? 's' : ''} &nbsp;·&nbsp; ${state.roleAssignmentMode === 'weighted' ? '⚖️ Weighted' : '🎲 Random'} &nbsp;·&nbsp; 🏆 ${pm === 'SHOTS' ? 'Shots' : 'Cash'} &nbsp;·&nbsp; ${pm === 'SHOTS' ? `🥃 up to ${formatShots(spnTicks)} / night (25% steps)` : `💰 ${formatMoney(nct)}/night`} &nbsp;·&nbsp; 🔥 Finale ${threshold} &nbsp;·&nbsp; 🎭 Hide @${hideAt} &nbsp;·&nbsp; ⚖️ ${tieMode === 'random' ? 'Random' : 'Host'} pick &nbsp;·&nbsp; 🩸 Forced recruit @${frt}+ &nbsp;·&nbsp; 🤝 Recruit@2 ${r2t ? 'on' : 'off'}` : ''}</p>
     `;
 
     // Settings gear toggle — uses module-level flag so re-renders keep the panel open
@@ -1410,6 +1431,46 @@ function renderLobby(state, content, hostControls) {
           b.classList.toggle('active', b.dataset.value === val);
         });
         socket.emit('update_lobby_settings', { roleAssignmentMode: val }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      });
+    });
+
+    // Forced recruit threshold stepper
+    const frtDisplay = document.getElementById('lobby-frt-display');
+    const frtHint    = document.getElementById('lobby-frt-hint');
+    function updateLobbyFrtDisplay() {
+      if (frtDisplay) frtDisplay.textContent = lobbyFrt;
+      if (frtHint) frtHint.textContent = lobbyFrt;
+    }
+    document.getElementById('btn-lobby-frt-down')?.addEventListener('click', () => {
+      if (lobbyFrt > 4) {
+        lobbyFrt--;
+        updateLobbyFrtDisplay();
+        socket.emit('update_lobby_settings', { forcedRecruitThreshold: lobbyFrt }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+    document.getElementById('btn-lobby-frt-up')?.addEventListener('click', () => {
+      if (lobbyFrt < 10) {
+        lobbyFrt++;
+        updateLobbyFrtDisplay();
+        socket.emit('update_lobby_settings', { forcedRecruitThreshold: lobbyFrt }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+
+    // Recruit-when-2-traitors toggle
+    document.querySelectorAll('#lobby-r2t-toggle .setting-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.value === 'on';
+        lobbyR2t = val;
+        document.querySelectorAll('#lobby-r2t-toggle .setting-toggle-btn').forEach(b => {
+          b.classList.toggle('active', (b.dataset.value === 'on') === val);
+        });
+        socket.emit('update_lobby_settings', { recruitOnTwoTraitors: val }, (res) => {
           if (res.error) showToast('⚠️ ' + res.error);
         });
       });

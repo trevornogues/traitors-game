@@ -131,7 +131,7 @@ io.on('connection', (socket) => {
   console.log(`[+] Connected: ${socket.id}`);
 
   // ── CREATE GAME ────────────────────────────────────────────────────────────
-  socket.on('create_game', ({ name, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode }, cb) => {
+  socket.on('create_game', ({ name, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors }, cb) => {
     if (!name || !numTraitors) return cb({ error: 'Missing fields' });
     const n = parseInt(numTraitors);
     if (isNaN(n) || n < 1 || n > 8) return cb({ error: 'Invalid traitor count (1–8)' });
@@ -145,6 +145,8 @@ io.on('connection', (socket) => {
     const pm  = (prizeMode === 'SHOTS') ? 'SHOTS' : 'CASH';
     const spnFloat = parseFloat(shotsPerNight);
     const spn = (!isFinite(spnFloat) ? 1 : Math.min(5, Math.max(0.25, spnFloat)));
+    const frt = Math.min(10, Math.max(4, parseInt(forcedRecruitThreshold) || 6));
+    const r2t = (recruitOnTwoTraitors === false) ? false : true;
 
     let enc = undefined;
     if (enabledNightChallenges !== undefined) {
@@ -156,7 +158,7 @@ io.on('connection', (socket) => {
     }
 
     const ram = (roleAssignmentMode === 'weighted') ? 'weighted' : 'random';
-    const game = createGame(socket.id, name.trim(), n, t, mp, egt, hrt, tbm, nct, pm, spn, enc, ram);
+    const game = createGame(socket.id, name.trim(), n, t, mp, egt, hrt, tbm, nct, pm, spn, enc, ram, frt, r2t);
     socket.join(game.code);
     console.log(`[GAME] Created: ${game.code} by ${name} (${n} traitors, ${ram} assignment)`);
     cb({ ok: true, code: game.code });
@@ -237,11 +239,11 @@ io.on('connection', (socket) => {
   });
 
   // ── UPDATE LOBBY SETTINGS (host only, lobby phase only) ────────────────────
-  socket.on('update_lobby_settings', ({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode }, cb) => {
+  socket.on('update_lobby_settings', ({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors }, cb) => {
     const game = getGameBySocket(socket.id);
     if (!game) return cb({ error: 'Not in a game' });
     if (!game.isHost(socket.id)) return cb({ error: 'Not the host' });
-    const result = game.updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode });
+    const result = game.updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors });
     if (result.error) return cb(result);
     cb({ ok: true });
     broadcastGameState(game);

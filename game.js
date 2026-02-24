@@ -121,7 +121,7 @@ function generateCode() {
 // Game class
 // ─────────────────────────────────────────────────────────────────────────────
 class Game {
-  constructor(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges) {
+  constructor(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors) {
     this.code = generateCode();
     this.phase = PHASES.LOBBY;
     this.numTraitors = numTraitors;
@@ -141,6 +141,12 @@ class Game {
     // When tieBreakerMode === 'host' and a second tie occurs, this holds the tied candidates
     // so the client can render the host-pick UI.
     this.tieBrokenCandidates = null;
+    // Forced-recruit threshold: solo traitor must recruit (instead of murder) when alive count
+    // is AT OR ABOVE this number. Range 4–10, default 6.
+    this.forcedRecruitThreshold = Math.min(10, Math.max(4, parseInt(forcedRecruitThreshold) || 6));
+    // When true, traitors who are reduced to exactly 2 get a one-time optional recruit after
+    // a banishment (in addition to the normal solo-traitor forced-recruit path).
+    this.recruitOnTwoTraitors = (recruitOnTwoTraitors === false) ? false : true;
     this.hostSocketId = hostSocketId; // can change if host reconnects
 
     // Players: { socketId, name, role, alive, isHost, eliminated, disconnected, spectator }
@@ -220,7 +226,7 @@ class Game {
     this.enabledNightChallenges = sanitized.length ? sanitized : Object.values(NIGHT_CHALLENGES);
 
     // Role assignment mode: 'random' (equal chance) | 'weighted' (players rate 1–10 desire to be traitor)
-    this.roleAssignmentMode = 'random';
+    this.roleAssignmentMode = (roleAssignmentMode === 'weighted') ? 'weighted' : 'random';
     // Player role-desire weights — socketId → 1..10 (default 5). Only used when mode is 'weighted'.
     this.playerWeights = {};
     this.playerWeights[hostSocketId] = 3;
@@ -284,7 +290,7 @@ class Game {
     }
   }
 
-  updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode }) {
+  updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors }) {
     if (this.phase !== PHASES.LOBBY) return { error: 'Game already started' };
     if (maxPlayers !== undefined) {
       const mp = Math.min(30, Math.max(3, parseInt(maxPlayers) || 30));
@@ -329,6 +335,14 @@ class Game {
     }
     if (roleAssignmentMode !== undefined) {
       this.roleAssignmentMode = roleAssignmentMode === 'weighted' ? 'weighted' : 'random';
+    }
+    if (forcedRecruitThreshold !== undefined) {
+      const frt = parseInt(forcedRecruitThreshold);
+      if (isNaN(frt) || frt < 4 || frt > 10) return { error: 'Invalid forced recruit threshold (4–10)' };
+      this.forcedRecruitThreshold = frt;
+    }
+    if (recruitOnTwoTraitors !== undefined) {
+      this.recruitOnTwoTraitors = recruitOnTwoTraitors === false ? false : true;
     }
     return { ok: true };
   }
@@ -865,10 +879,10 @@ class Game {
     const traitors = this.getAliveTraitors();
     const aliveCount = this.getAlivePlayers().length;
 
-    if (traitors.length === 1 && aliveCount >= 5) {
+    if (traitors.length === 1 && aliveCount >= this.forcedRecruitThreshold) {
       return { forced: true, mode: NIGHT_MODES.FORCED_RECRUIT };
     }
-    if (traitors.length >= 2 && !this.groupRecruitUsed && this._traitorWasJustBanished) {
+    if (this.recruitOnTwoTraitors && traitors.length >= 2 && !this.groupRecruitUsed && this._traitorWasJustBanished) {
       return { forced: false, mode: NIGHT_MODES.RECRUIT };
     }
     return null;
@@ -990,6 +1004,8 @@ class Game {
       endGameThreshold: this.endGameThreshold,
       hideRoleThreshold: this.hideRoleThreshold,
       tieBreakerMode: this.tieBreakerMode,
+      forcedRecruitThreshold: this.forcedRecruitThreshold,
+      recruitOnTwoTraitors: this.recruitOnTwoTraitors,
 
       // Alive player list (names + ids only — no roles)
       alivePlayers: this.getAlivePlayers().map(p => ({
@@ -1280,11 +1296,10 @@ class Game {
 // ─────────────────────────────────────────────────────────────────────────────
 const games = new Map(); // code -> Game
 
-function createGame(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode) {
+function createGame(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors) {
   let code;
   do { code = generateCode(); } while (games.has(code));
-  const game = new Game(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges);
-  if (roleAssignmentMode === 'weighted') game.roleAssignmentMode = 'weighted';
+  const game = new Game(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors);
   game.code = code;
   games.set(code, game);
   return game;
