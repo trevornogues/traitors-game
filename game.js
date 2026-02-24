@@ -218,6 +218,12 @@ class Game {
     const requested = enabledNightChallenges;
     const sanitized = Array.isArray(requested) ? sanitizeEnabledNightChallenges(requested) : [];
     this.enabledNightChallenges = sanitized.length ? sanitized : Object.values(NIGHT_CHALLENGES);
+
+    // Role assignment mode: 'random' (equal chance) | 'weighted' (players rate 1–10 desire to be traitor)
+    this.roleAssignmentMode = 'random';
+    // Player role-desire weights — socketId → 1..10 (default 5). Only used when mode is 'weighted'.
+    this.playerWeights = {};
+    this.playerWeights[hostSocketId] = 3;
   }
 
   // ─── Player helpers ────────────────────────────────────────────────────────
@@ -262,6 +268,7 @@ class Game {
       isHost: false,
       eliminated: false,
     });
+    this.playerWeights[socketId] = 3;
     return { ok: true };
   }
 
@@ -269,6 +276,7 @@ class Game {
     // Only safe to remove in lobby
     if (this.phase === PHASES.LOBBY) {
       this.players = this.players.filter(p => p.socketId !== socketId);
+      delete this.playerWeights[socketId];
     } else {
       // Mark as disconnected but keep in game
       const p = this.getPlayer(socketId);
@@ -276,7 +284,7 @@ class Game {
     }
   }
 
-  updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges }) {
+  updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode }) {
     if (this.phase !== PHASES.LOBBY) return { error: 'Game already started' };
     if (maxPlayers !== undefined) {
       const mp = Math.min(30, Math.max(3, parseInt(maxPlayers) || 30));
@@ -319,6 +327,19 @@ class Game {
       // Reset rotation so it reflects the new enabled list.
       this._nightChallengeDeck = [];
     }
+    if (roleAssignmentMode !== undefined) {
+      this.roleAssignmentMode = roleAssignmentMode === 'weighted' ? 'weighted' : 'random';
+    }
+    return { ok: true };
+  }
+
+  // ─── Set a single player's role-desire weight (lobby only) ─────────────────
+  setPlayerWeight(socketId, weight) {
+    if (this.phase !== PHASES.LOBBY) return { error: 'Game already started' };
+    if (!this.getPlayer(socketId)) return { error: 'Player not found' };
+    const w = parseInt(weight);
+    if (isNaN(w) || w < 1 || w > 5) return { error: 'Weight must be between 1 and 5' };
+    this.playerWeights[socketId] = w;
     return { ok: true };
   }
 
@@ -357,11 +378,31 @@ class Game {
     if (this.numTraitors >= this.players.length) return { error: 'Too many traitors' };
     if (this.numTraitors < 1) return { error: 'Need at least 1 traitor' };
 
-    // Shuffle and assign roles
-    const shuffled = [...this.players].sort(() => Math.random() - 0.5);
-    shuffled.forEach((p, i) => {
-      p.role = i < this.numTraitors ? ROLES.TRAITOR : ROLES.FAITHFUL;
-    });
+    // Assign roles
+    const eligible = this.players.filter(p => !p.spectator);
+    if (this.roleAssignmentMode === 'weighted') {
+      // Efraimidis-Spirakis weighted reservoir sampling:
+      // score = rand ^ (1 / weight) — higher weight skews score toward 1.0.
+      // Top numTraitors scorers become Traitors.
+      const scored = eligible.map(p => {
+        const w = Math.max(1, Math.min(5, this.playerWeights[p.socketId] || 3));
+        return { player: p, score: Math.random() ** (1 / w) };
+      });
+      scored.sort((a, b) => b.score - a.score);
+      scored.forEach(({ player }, i) => {
+        player.role = i < this.numTraitors ? ROLES.TRAITOR : ROLES.FAITHFUL;
+      });
+    } else {
+      // Fisher-Yates — perfectly unbiased
+      const shuffled = [...eligible];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      shuffled.forEach((p, i) => {
+        p.role = i < this.numTraitors ? ROLES.TRAITOR : ROLES.FAITHFUL;
+      });
+    }
 
     this.phase = PHASES.ROLE_REVEAL;
     this.round = 1;
@@ -974,7 +1015,12 @@ class Game {
         id: p.socketId,
         name: p.name,
         isHost: p.isHost,
+        // weight is intentionally omitted — each player's preference is private
       })),
+
+      roleAssignmentMode: this.roleAssignmentMode,
+      // Each player only sees their own weight — never anyone else's
+      myWeight: this.playerWeights[socketId] || 3,
 
       numTraitors: isHost ? this.numTraitors : undefined,
       maxPlayers: this.maxPlayers,
@@ -1234,10 +1280,11 @@ class Game {
 // ─────────────────────────────────────────────────────────────────────────────
 const games = new Map(); // code -> Game
 
-function createGame(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges) {
+function createGame(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode) {
   let code;
   do { code = generateCode(); } while (games.has(code));
   const game = new Game(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges);
+  if (roleAssignmentMode === 'weighted') game.roleAssignmentMode = 'weighted';
   game.code = code;
   games.set(code, game);
   return game;

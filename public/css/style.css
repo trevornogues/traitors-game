@@ -913,6 +913,42 @@ body.identity-hidden .role-reveal-card {
   text-overflow: ellipsis;
 }
 
+/* ── Lobby weight section (weighted role assignment — shown below player list) ── */
+.lobby-weight-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 16px;
+  text-align: center;
+}
+.lobby-weight-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--gold-light);
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+.lobby-weight-hint {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+/* Weight badge shown inside each player card when weighted mode is on */
+.player-weight-badge {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--gold-light);
+  background: rgba(212,160,23,0.12);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 3px 10px;
+  margin-left: auto;
+  min-width: 30px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
 /* ── In-lobby settings panel (lives inside the host bar) ────────────────── */
 .lobby-settings-panel-inner {
   background: var(--bg-card);

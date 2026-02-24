@@ -614,6 +614,7 @@ const NIGHT_CHALLENGE_LABEL_MAP = NIGHT_CHALLENGE_OPTIONS.reduce((acc, o) => {
 }, {});
 
 let enabledNightChallengesCreate = NIGHT_CHALLENGE_OPTIONS.map(o => o.id); // default: all on
+let roleAssignmentModeCreate = 'random'; // 'random' | 'weighted'
 
 // Apply default theme on page load
 applyTheme('vampire');
@@ -765,6 +766,16 @@ document.getElementById('btn-traitors-up').addEventListener('click', () => {
       });
     });
   }
+
+  // Role assignment mode toggle (create screen)
+  document.querySelectorAll('#role-assignment-toggle .setting-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      roleAssignmentModeCreate = btn.dataset.value;
+      document.querySelectorAll('#role-assignment-toggle .setting-toggle-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.value === roleAssignmentModeCreate);
+      });
+    });
+  });
 })();
 
 // Theme picker
@@ -795,6 +806,7 @@ document.getElementById('btn-create-game').addEventListener('click', () => {
     prizeMode: prizeModeCreate,
     shotsPerNight: shotsPerNightCreateTicks / 4,
     enabledNightChallenges: enabledNightChallengesCreate,
+    roleAssignmentMode: roleAssignmentModeCreate,
   }, (res) => {
     if (res.error) { errEl.textContent = res.error; return; }
     gameCode = res.code;
@@ -1043,7 +1055,46 @@ function renderLobby(state, content, hostControls) {
       `).join('')}
     </div>
 
+    ${state.roleAssignmentMode === 'weighted' ? (() => {
+      const myWeight = state.myWeight || 3;
+      return `
+        <div class="lobby-weight-section">
+          <div class="lobby-weight-label">How badly do you want to be a ${currentTheme.traitorName}?</div>
+          <div class="lobby-weight-hint">1 = not at all &nbsp;·&nbsp; 5 = desperately want it</div>
+          <div class="traitor-picker" style="margin-top:10px">
+            <button class="btn-stepper" id="btn-weight-down">−</button>
+            <span id="weight-display">${myWeight}</span>
+            <button class="btn-stepper" id="btn-weight-up">+</button>
+          </div>
+        </div>
+      `;
+    })() : ''}
+
   `;
+
+  // Wire up weight picker (all players, weighted mode only)
+  if (state.roleAssignmentMode === 'weighted') {
+    let currentWeight = state.myWeight || 3;
+    const weightDisplay = document.getElementById('weight-display');
+    document.getElementById('btn-weight-down')?.addEventListener('click', () => {
+      if (currentWeight > 1) {
+        currentWeight--;
+        if (weightDisplay) weightDisplay.textContent = currentWeight;
+        socket.emit('set_player_weight', { weight: currentWeight }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+    document.getElementById('btn-weight-up')?.addEventListener('click', () => {
+      if (currentWeight < 5) {
+        currentWeight++;
+        if (weightDisplay) weightDisplay.textContent = currentWeight;
+        socket.emit('set_player_weight', { weight: currentWeight }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+  }
 
   // Wire up in-lobby advanced settings (host only) — panel lives inside the host bar
   if (state.isHost) {
@@ -1133,6 +1184,14 @@ function renderLobby(state, content, hostControls) {
           </div>
         </div>
         <div class="advanced-setting-row">
+          <div class="advanced-setting-label">🎭 Role Assignment</div>
+          <div class="advanced-setting-hint">Random = equal chance. Weighted = players rate their desire (1–10) and assignments skew accordingly.</div>
+          <div class="setting-toggle-group" id="lobby-role-assignment-toggle" style="margin-top:8px">
+            <button class="setting-toggle-btn ${state.roleAssignmentMode === 'random' ? 'active' : ''}" data-value="random">🎲 Random</button>
+            <button class="setting-toggle-btn ${state.roleAssignmentMode === 'weighted' ? 'active' : ''}" data-value="weighted">⚖️ Weighted</button>
+          </div>
+        </div>
+        <div class="advanced-setting-row">
           <div class="advanced-setting-label">🎲 Night Challenges</div>
           <div class="advanced-setting-hint">Toggle which mini-games can appear at night. At least one must stay enabled.</div>
           <div class="challenge-toggle-grid" id="lobby-night-challenges" style="margin-top:8px">
@@ -1155,7 +1214,7 @@ function renderLobby(state, content, hostControls) {
         </button>
       </div>
       ${!canStart ? '<p class="text-center text-muted" style="font-size:0.75rem;margin-top:4px">Need at least 4 players</p>' : ''}
-      <p class="lobby-settings-summary">${state.numTraitors !== undefined ? `${state.numTraitors} ${currentTheme.traitorName}${state.numTraitors !== 1 ? 's' : ''} &nbsp;·&nbsp; 🏆 ${pm === 'SHOTS' ? 'Shots' : 'Cash'} &nbsp;·&nbsp; ${pm === 'SHOTS' ? `🥃 up to ${formatShots(spnTicks)} / night (25% steps)` : `💰 ${formatMoney(nct)}/night`} &nbsp;·&nbsp; 🔥 Finale ${threshold} &nbsp;·&nbsp; 🎭 Hide @${hideAt} &nbsp;·&nbsp; ⚖️ ${tieMode === 'random' ? 'Random' : 'Host'} pick` : ''}</p>
+      <p class="lobby-settings-summary">${state.numTraitors !== undefined ? `${state.numTraitors} ${currentTheme.traitorName}${state.numTraitors !== 1 ? 's' : ''} &nbsp;·&nbsp; ${state.roleAssignmentMode === 'weighted' ? '⚖️ Weighted' : '🎲 Random'} &nbsp;·&nbsp; 🏆 ${pm === 'SHOTS' ? 'Shots' : 'Cash'} &nbsp;·&nbsp; ${pm === 'SHOTS' ? `🥃 up to ${formatShots(spnTicks)} / night (25% steps)` : `💰 ${formatMoney(nct)}/night`} &nbsp;·&nbsp; 🔥 Finale ${threshold} &nbsp;·&nbsp; 🎭 Hide @${hideAt} &nbsp;·&nbsp; ⚖️ ${tieMode === 'random' ? 'Random' : 'Host'} pick` : ''}</p>
     `;
 
     // Settings gear toggle — uses module-level flag so re-renders keep the panel open
@@ -1341,6 +1400,19 @@ function renderLobby(state, content, hostControls) {
           if (res.error) showToast('⚠️ ' + res.error);
         });
       }
+    });
+
+    // Role assignment mode toggle (lobby)
+    document.querySelectorAll('#lobby-role-assignment-toggle .setting-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.value;
+        document.querySelectorAll('#lobby-role-assignment-toggle .setting-toggle-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.value === val);
+        });
+        socket.emit('update_lobby_settings', { roleAssignmentMode: val }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      });
     });
 
     // Night challenge toggles (lobby)

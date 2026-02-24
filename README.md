@@ -42,17 +42,31 @@ Players are secretly assigned to two teams:
 
 ---
 
-## 💰 Prize Pool + Night Challenges (Mini-Games)
+## ⚙️ Advanced Settings
+
+The host can configure all of the following when creating a game (and most can also be adjusted live in the lobby settings panel before the game starts).
+
+### 🎭 Role Assignment Mode *(new!)*
+
+Controls how players are assigned to the hidden team.
+
+- **🎲 Random (default)** — every player has a perfectly equal chance of being a hidden player.
+- **⚖️ Weighted** — before the game starts, every player (including the host) privately rates *how badly they want to be the bad guy* on a scale of **1–5** (default 3). Assignments are then skewed toward whoever asked for it most.
+  - A rating of **1** means "I'd really rather not" — lowest odds (~17% chance in a head-to-head against a 5).
+  - A rating of **5** means "pick me, pick me!" — highest odds (~83% chance in a head-to-head against a 1).
+  - It's still random — nobody is *guaranteed* a role — but the probability shifts meaningfully without becoming absurdly lopsided.
+  - Everyone's current rating is visible on their player card in the lobby, so it's a social moment as well.
+  - Under the hood: [Efraimidis-Spirakis weighted reservoir sampling](https://en.wikipedia.org/wiki/Reservoir_sampling#Weighted_random_sampling) — each player draws a score `rand^(1/weight)` and the top *N* scorers become the hidden team.
+
+### 💰 Prize Pool + Night Challenges (Mini-Games)
 
 To keep everyone busy on their phones during the night (so traitors can pick secretly without it being obvious), the app runs a **Night Challenge** mini-game during **NIGHT**.
 
 - **Faithful** play a mini-game to build the prize pool (or shots pot).
-- **Traitors** still choose a murder/recruit target, but can optionally answer a “blend in” question on some nights.
+- **Traitors** still choose a murder/recruit target, but can optionally answer a "blend in" question on some nights.
 - The night ends the moment all traitors **lock in** (so traitors can intentionally wait to let more progress happen, or lock in quickly to cut it off).
 
-### Prize Pool Modes
-
-The host can choose one of two modes in **Advanced Settings**:
+#### Prize Pool Modes
 
 - **💰 Cash (default)**:
   - Each night can add up to a configurable **Night Challenge Target** (default **$10,000/night**).
@@ -65,18 +79,29 @@ The host can choose one of two modes in **Advanced Settings**:
     - Example (Shots Per Night = 3): 25–49% → **+¾ shot**, 50–74% → **+1½ shots**, 75–99% → **+2¼ shots**, 100% → **+3 shots**
   - At the end: **losers split the shots** (shown per-loser).
 
-### Mini-Games Included
+#### Mini-Games Included
 
-Night Challenges are randomly selected each night (repeats are allowed):
+Night Challenges are randomly selected each night (shuffle-bag rotation avoids repeats):
 
 - **Math Blitz** — 4 arithmetic questions, type answers and lock them in
 - **Odd One Out** — 1 prompt (4 words), each player gets a different set
-- **Color Stroop** — 4 rounds of “tap the ink color”
+- **Color Stroop** — 4 rounds of "tap the ink color"
 - **Higher / Lower** — 4 guesses from a 1–13 sequence
 - **Trivia** — 1 question with 4 choices, each player gets a different question
 - **Memory Flip** — find 4 matching pairs
-- **Don’t Tap the Skull** — up to 4 safe taps; lose immediately if you hit a skull
+- **Don't Tap the Skull** — up to 4 safe taps; lose immediately if you hit a skull
 - **Timing Challenge** — 1 attempt: stop at a target second (2–10); results show to 2 decimals
+
+The host can enable/disable individual challenges in Advanced Settings — at least one must stay on.
+
+### Other Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| **Max Players** | 30 | Hard cap on how many can join (3–30). |
+| **Finale — Player Count** | 5 | Auto-triggers End Game mode when this many players remain after a banishment (3–6). |
+| **Hide Identity Reveals After** | 4 | Stops showing the banished player's role when this many or fewer players remain before the banishment (3–6). Keeps the finale tense. |
+| **Persistent Tie Breaker** | Random Draw | If the runoff vote is also tied: **Host Chooses** (host picks manually) or **Random Draw** (server picks instantly). |
 
 ---
 
@@ -121,7 +146,7 @@ Server running!
 Lobby -> Role Reveal -> Night -> Morning Reveal -> Round Table -> Vote -> Vote Reveal -> Banishment -> repeat
 ```
 
-1. **Lobby** — Host creates a game, picks a theme, and sets the number of hidden players. Others join with the 4-letter code.
+1. **Lobby** — Host creates a game, picks a theme, sets the number of hidden players, and configures Advanced Settings (including optional Weighted Role Assignment). Others join with the 4-letter code. If Weighted mode is on, everyone rates their desire to be the bad guy (1–5) before the host starts.
 2. **Role Reveal** — Each player privately sees their role. Hidden team members see each other's names.
 3. **Night** — The hidden team secretly agrees on a target (unanimous consensus + lock-in required). Everyone else plays a Night Challenge mini-game on their phone to build the prize pool.
 4. **Morning Reveal** — Host triggers a dramatic reveal: surviving players appear one by one with a 7-second delay. The eliminated player never walks in. After everyone is accounted for, the result is shown.

@@ -144,6 +144,15 @@
           </div>
 
           <div class="advanced-setting-row">
+            <div class="advanced-setting-label">🎭 Role Assignment</div>
+            <div class="advanced-setting-hint">Random: every player has an equal chance. Weighted: players privately rate how badly they want to be the bad guy (1–10), and assignments skew toward those who want it most.</div>
+            <div class="setting-toggle-group" id="role-assignment-toggle" style="margin-top: 8px;">
+              <button class="setting-toggle-btn active" data-value="random">🎲 Random</button>
+              <button class="setting-toggle-btn" data-value="weighted">⚖️ Weighted</button>
+            </div>
+          </div>
+
+          <div class="advanced-setting-row">
             <div class="advanced-setting-label">🎲 Night Challenges</div>
             <div class="advanced-setting-hint">Toggle which mini-games can appear at night. At least one must stay enabled.</div>
             <div class="challenge-toggle-grid" id="night-challenges-create" style="margin-top: 8px;"></div>
@@ -288,7 +297,7 @@
           <h3 class="rules-section-title">🔑 Setup</h3>
           <ul class="rules-list">
             <li>4–30 players join with the same game code.</li>
-            <li>The host chooses how many Insiders (usually 2–3).</li>
+            <li>The host chooses how many Insiders (usually 2–3) and configures <strong>Advanced Settings</strong> before starting.</li>
             <li><strong>Insiders know each other's identities.</strong> Innocents know nothing.</li>
             <li>Everyone else is an Innocent — the majority team.</li>
           </ul>
@@ -312,6 +321,18 @@
             <li><strong>Cash</strong> — the pot increases each night based on group completion (up to a nightly target). <strong>Winners split</strong> the cash.</li>
             <li><strong>Shots</strong> — the pot increases in quarter-shot steps based on group completion (0%, 25%, 50%, 75%, 100% of “Shots per Night”). <strong>Losers split</strong> the shots.</li>
             <li>The host can also choose which Night Challenges are allowed to appear (at least one must stay enabled).</li>
+          </ul>
+        </div>
+
+        <div class="rules-section">
+          <h3 class="rules-section-title">⚙️ Host Settings</h3>
+          <ul class="rules-list">
+            <li><strong>🎭 Role Assignment</strong> — <em>Random</em> (default): equal odds for everyone. <em>Weighted</em>: while waiting in the lobby, each player privately rates how badly they want to be the bad guy on a scale of 1–5. The game uses those ratings to skew role assignments — higher ratings mean better odds — but it's still random, so nothing is guaranteed.</li>
+            <li><strong>🔥 Finale — Player Count</strong> — how many players trigger End Game mode (3–6, default 5).</li>
+            <li><strong>🎭 Hide Identity Reveals After</strong> — stops showing the banished player's role when this many or fewer players remain (3–6, default 4). Keeps the finale mysterious.</li>
+            <li><strong>⚖️ Persistent Tie Breaker</strong> — if the runoff vote is also tied: <em>Host Chooses</em> (host picks manually) or <em>Random Draw</em> (server picks instantly).</li>
+            <li><strong>🏆 Prize Pool Mode</strong> — <em>Cash</em>: winners split the pot. <em>Shots</em>: losers split the shots.</li>
+            <li><strong>🎲 Night Challenges</strong> — toggle which mini-games can appear. At least one must stay enabled.</li>
           </ul>
         </div>
 
@@ -342,7 +363,7 @@
           <ul class="rules-list">
             <li>Innocents: pay attention to who pushes suspicion onto others and who deflects.</li>
             <li>Insiders: act like an Innocent — vote strategically to avoid drawing suspicion.</li>
-            <li>Runoff votes happen if there's a tie. If the runoff is also tied, it resolves by the host’s “Persistent Tie Breaker” setting (host choice or random draw).</li>
+            <li>Runoff votes happen if there's a tie. If the runoff is also tied, it resolves by the host's "Persistent Tie Breaker" setting (host choice or random draw).</li>
             <li>At night, keep your phone private — the game is designed so everyone has something to look at.</li>
           </ul>
         </div>
