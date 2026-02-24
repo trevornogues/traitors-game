@@ -170,6 +170,14 @@
             </div>
           </div>
           <div class="advanced-setting-row">
+            <div class="advanced-setting-label">🛡️ Shields</div>
+            <div class="advanced-setting-hint">Each night, the faithful player with the highest mini-game score secretly wins a shield. If the traitors target that player, the murder is blocked and nobody is eliminated. A hint ("a shield was / was not won") is shown before the morning reveal — but who won it stays secret, even from the winner.</div>
+            <div class="setting-toggle-group" id="shields-toggle" style="margin-top: 8px;">
+              <button class="setting-toggle-btn active" data-value="on">🛡️ Enabled</button>
+              <button class="setting-toggle-btn" data-value="off">🚫 Disabled</button>
+            </div>
+          </div>
+          <div class="advanced-setting-row">
             <div class="advanced-setting-label">🎲 Night Challenges</div>
             <div class="advanced-setting-hint">Toggle which mini-games can appear at night. At least one must stay enabled.</div>
             <div class="challenge-toggle-grid" id="night-challenges-create" style="margin-top: 8px;"></div>
@@ -323,8 +331,8 @@
         <div class="rules-section">
           <h3 class="rules-section-title">🔄 Each Round</h3>
           <ol class="rules-list rules-list-ordered">
-            <li><strong>Night</strong> — Insiders secretly pick a target. All Insiders must agree on the same target and lock in. Meanwhile, everyone else plays a short Night Challenge mini-game on their phone.</li>
-            <li><strong>Morning</strong> — Players check who showed up. A missing player was eliminated in the night. Their role is <em>not</em> revealed.</li>
+            <li><strong>Night</strong> — Insiders secretly pick a target. All Insiders must agree on the same target and lock in. Meanwhile, everyone else plays a short Night Challenge mini-game on their phone. If Shields are enabled, the best-scoring Innocent silently wins a shield.</li>
+            <li><strong>Morning</strong> — If Shields are enabled, a hint appears first ("a shield was / was not won") before the reveal. Then players check who showed up. A missing player was eliminated in the night. Their role is <em>not</em> revealed.</li>
             <li><strong>Discussion</strong> — Everyone debates, accuses, and defends. Insiders must blend in and mislead.</li>
             <li><strong>Banishment Vote</strong> — All living players vote to banish someone. Most votes loses. After a dramatic countdown, the banished player's role is revealed <em>unless</em> the host enabled “Hide Identity Reveals” for late game.</li>
           </ol>
@@ -342,6 +350,17 @@
         </div>
 
         <div class="rules-section">
+          <h3 class="rules-section-title">🛡️ Shields</h3>
+          <ul class="rules-list">
+            <li>Each night, the <strong>best-scoring Innocent</strong> on the Night Challenge secretly wins a shield — nobody is told, not even the winner.</li>
+            <li>If the Insiders target the shield holder, the <strong>murder is silently blocked</strong> and everyone walks in as normal.</li>
+            <li>Before the reveal, a hint is shown: <strong>"A shield was won"</strong> or <strong>"No shield was won"</strong> — but nothing more.</li>
+            <li>Shields last <strong>one night only</strong>. Ties are broken by who finished the mini-game fastest.</li>
+            <li>The full <strong>Shield Results</strong> are revealed at the end of the game.</li>
+          </ul>
+        </div>
+
+        <div class="rules-section">
           <h3 class="rules-section-title">⚙️ Host Settings</h3>
           <ul class="rules-list">
             <li><strong>🎭 Role Assignment</strong> — <em>Random</em> (default): equal odds for everyone. <em>Weighted</em>: while waiting in the lobby, each player privately rates how badly they want to be the bad guy on a scale of 1–5. The game uses those ratings to skew role assignments — higher ratings mean better odds — but it's still random, so nothing is guaranteed.</li>
@@ -350,6 +369,7 @@
             <li><strong>⚖️ Persistent Tie Breaker</strong> — if the runoff vote is also tied: <em>Host Chooses</em> (host picks manually) or <em>Random Draw</em> (server picks instantly).</li>
             <li><strong>🏆 Prize Pool Mode</strong> — <em>Cash</em>: winners split the pot. <em>Shots</em>: losers split the shots.</li>
             <li><strong>🎲 Night Challenges</strong> — toggle which mini-games can appear. At least one must stay enabled.</li>
+            <li><strong>🛡️ Shields</strong> — the shield mechanic is <strong>on by default</strong>. See the Shields section above for full details.</li>
           </ul>
         </div>
 

@@ -65,113 +65,25 @@ const THEMES = {
     // Recruited
     recruitedTitle: "You've Been Recruited!",
     recruitedDesc: 'The Traitors have chosen you. You are now one of them.<br>Keep this secret.',
+    recruitedWitnessTitle: 'A New Traitor Joins 🤝',
+    recruitedWitnessDesc: '{name} has been recruited to your side.<br>Keep this between traitors.',
     fellowTraitorsLabel: 'Your Fellow Traitors',
+    // Shield
+    shieldName: 'Shield',
+    shieldIcon: '🛡️',
+    shieldWonText: 'A shield was secretly won overnight.',
+    shieldNoneText: 'No shield was won overnight.',
+    shieldBlockedDesc: 'blocked the murder!',
+    shieldNotUsedDesc: 'shield not used',
+    // Game summary
+    summaryMurderedVerb: 'murdered',
+    summaryRecruitedVerb: 'recruited',
+    summaryBanishedVerb: 'banished',
     // Tip jar
     tipIcon: '🏰',
     tipTitle: 'The game has ended.',
     tipBody: 'This free game was made with ❤️.<br>If you enjoyed plotting in the castle, a small tip means the world!',
   },
-  werewolf: {
-    id: 'werewolf',
-    landingIcon: '🐺',
-    landingTitle: 'WERE-<br>WOLVES',
-    landingSubtitle: 'The wolves lurk among the villagers...',
-    traitorName: 'WOLF',
-    faithfulName: 'VILLAGER',
-    traitorIcon: '🐺',
-    faithfulIcon: '🏘️',
-    traitorDesc: "Devour the Villagers. Stay hidden. Claim the night.",
-    faithfulDesc: "Hunt the wolves among you. Unmask them before dawn.",
-    lobbyTitle: 'The Village Gathers',
-    nightTitle: 'Night Descends',
-    nightIcon: '🌕',
-    nightEyebrow: 'Wolves Only',
-    nightWaiting: 'The wolves prowl the darkness...',
-    nightWaitingNote: 'Bar your doors. Stay inside.',
-    fellowLabel: 'Your Pack',
-    murderTitle: '🐺 Choose Your Prey',
-    recruitTitle: '🤝 Turn a Villager',
-    murderBanner: 'HUNT NIGHT',
-    recruitBanner: 'TURNING NIGHT',
-    morningPendingTitle: 'Darkness Fades',
-    morningPendingSubtitle: 'The villagers emerge from their homes...',
-    morningArrivalText: 'emerged at dawn',
-    morningAbsentText: 'never emerged',
-    morningQuietTitle: 'A Safe Night',
-    morningQuietDesc: 'The village wakes unharmed. The wolves stayed their hunger.<br>No one was taken.',
-    morningMurderTitle: 'A Grim Morning',
-    morningMurderDesc: 'was found dead at the edge of the forest.<br>The wolves struck in the night.',
-    roundTableTitle: 'The Village Square',
-    roundTableSubtitle: 'Accuse. Argue. Exile.',
-    voteEyebrow: 'Exile Vote',
-    banishmentLabel: 'Exile',
-    banishedDesc: 'has been driven from the village.',
-    banishedMeDesc: 'You have been driven from the village.',
-    endGameFaithfulLabel: 'All Villagers',
-    endGameTraitorLabel: 'Any Wolf among you',
-    traitorWin: 'THE WOLVES WIN',
-    faithfulWin: 'THE VILLAGE WINS',
-    traitorWinDesc: 'The wolves devoured the village from within.',
-    faithfulWinDesc: 'The villagers drove out every last wolf.',
-    recruitedTitle: "You've Been Turned!",
-    recruitedDesc: 'The pack has accepted you. You run with the wolves now.<br>Keep your secret.',
-    fellowTraitorsLabel: 'Your Pack',
-    // Tip jar
-    tipIcon: '🌕',
-    tipTitle: 'The howling is over.',
-    tipBody: 'Survived the night? Made it out alive? This game is free and made with ❤️.<br>A small tip helps keep the village running!',
-  },
-  mole: {
-    id: 'mole',
-    landingIcon: '🕵️',
-    landingTitle: 'THE<br>MOLE',
-    landingSubtitle: 'Someone among you is feeding intel to the enemy...',
-    traitorName: 'MOLE',
-    faithfulName: 'AGENT',
-    traitorIcon: '🔪',
-    faithfulIcon: '🔍',
-    traitorDesc: "Eliminate the Agents. Maintain cover. Steal the prize.",
-    faithfulDesc: "Expose the mole before the mission is compromised.",
-    lobbyTitle: 'Mission Briefing',
-    nightTitle: 'Lights Out',
-    nightIcon: '🔦',
-    nightEyebrow: 'Moles Only',
-    nightWaiting: 'The moles are making their move...',
-    nightWaitingNote: 'Stay alert. Trust no one.',
-    fellowLabel: 'Your Network',
-    murderTitle: '🔪 Eliminate a Target',
-    recruitTitle: '🤝 Flip an Agent',
-    murderBanner: 'ELIMINATION NIGHT',
-    recruitBanner: 'DEFECTION NIGHT',
-    morningPendingTitle: 'Comms Restored',
-    morningPendingSubtitle: 'Agents checking in from the field...',
-    morningArrivalText: 'reported in',
-    morningAbsentText: 'went dark',
-    morningQuietTitle: 'No Casualties',
-    morningQuietDesc: 'All agents report in. The moles held off tonight.<br>Everyone is accounted for.',
-    morningMurderTitle: 'Agent Down',
-    morningMurderDesc: 'has gone dark.<br>They were eliminated in the night.',
-    roundTableTitle: 'The Debrief',
-    roundTableSubtitle: 'Interrogate. Deduce. Decide.',
-    voteEyebrow: 'Elimination Vote',
-    banishmentLabel: 'Extraction',
-    banishedDesc: 'has been extracted from the mission.',
-    banishedMeDesc: 'You have been extracted from the mission.',
-    endGameFaithfulLabel: 'All Agents',
-    endGameTraitorLabel: 'Any Mole among you',
-    traitorWin: 'THE MOLE WINS',
-    faithfulWin: 'THE AGENTS WIN',
-    traitorWinDesc: 'The mole compromised the mission from the inside.',
-    faithfulWinDesc: 'The agents exposed every last mole.',
-    recruitedTitle: "You've Been Flipped!",
-    recruitedDesc: 'The network has turned you. You now work against your former team.<br>Maintain your cover.',
-    fellowTraitorsLabel: 'Your Network',
-    // Tip jar
-    tipIcon: '🕵️',
-    tipTitle: 'Mission complete.',
-    tipBody: 'Identity revealed, mission closed. This game is free and made with ❤️.<br>A small tip keeps the operation running!',
-  },
-
   cowboys: {
     id: 'cowboys',
     landingIcon: '🤠',
@@ -216,7 +128,20 @@ const THEMES = {
     faithfulWinDesc: 'The cowboys ran every last alien off the land. This town is ours.',
     recruitedTitle: "You've Been Converted! 👽",
     recruitedDesc: "The aliens got to you. You're one of them now.<br>Act natural, pardner.",
+    recruitedWitnessTitle: 'The Pod Grows 🛸',
+    recruitedWitnessDesc: '{name} has been converted. The pod expands, partner.',
     fellowTraitorsLabel: 'Your Alien Pod',
+    // Shield
+    shieldName: 'Force Field',
+    shieldIcon: '🛸',
+    shieldWonText: "A force field was secretly activated overnight.",
+    shieldNoneText: "No force field was activated overnight.",
+    shieldBlockedDesc: "deflected the abduction!",
+    shieldNotUsedDesc: 'force field inactive',
+    // Game summary
+    summaryMurderedVerb: 'abducted',
+    summaryRecruitedVerb: 'converted',
+    summaryBanishedVerb: 'run off the ranch',
     // Tip jar
     tipIcon: '🤠',
     tipTitle: "Well, that was a hoot.",
@@ -267,7 +192,20 @@ const THEMES = {
     faithfulWinDesc: 'The queers sniffed out every last straight. We love to see it. 🏳️‍🌈',
     recruitedTitle: "You've Been Straightened! 😱",
     recruitedDesc: "The straights got to you. You're one of them now.<br>Keep your khakis on.",
+    recruitedWitnessTitle: 'The Straights Grow 😐',
+    recruitedWitnessDesc: '{name} has been straightened. Devastating for them, good for us.',
     fellowTraitorsLabel: 'Fellow Straights',
+    // Shield
+    shieldName: 'Disco Diva Shield',
+    shieldIcon: '🪩',
+    shieldWonText: 'A Disco Diva Shield was secretly activated overnight, bestie.',
+    shieldNoneText: 'No Disco Diva Shield appeared overnight.',
+    shieldBlockedDesc: 'sent the straights packing! 💅',
+    shieldNotUsedDesc: 'shield not used',
+    // Game summary
+    summaryMurderedVerb: 'slayed 💅',
+    summaryRecruitedVerb: 'straightened',
+    summaryBanishedVerb: 'cancelled',
     // Tip jar
     tipIcon: '🏳️‍🌈',
     tipTitle: "Okurr, the gays have spoken. ✨",
@@ -318,7 +256,20 @@ const THEMES = {
     faithfulWinDesc: 'Every last vampire has been staked. Sleep easy — for now.',
     recruitedTitle: "You've Been Turned! 🧛",
     recruitedDesc: "The blood has changed you. You're one of the coven now.<br>Try not to bite anyone... yet.",
+    recruitedWitnessTitle: 'The Coven Grows 🩸',
+    recruitedWitnessDesc: '{name} has been turned. Welcome them into the night.',
     fellowTraitorsLabel: 'Your Coven',
+    // Shield
+    shieldName: 'Garlic Wreath',
+    shieldIcon: '🧄',
+    shieldWonText: 'A garlic wreath was secretly tucked away overnight.',
+    shieldNoneText: 'No garlic wreath was hidden overnight.',
+    shieldBlockedDesc: 'repelled the feeding!',
+    shieldNotUsedDesc: 'wreath not used',
+    // Game summary
+    summaryMurderedVerb: 'drained',
+    summaryRecruitedVerb: 'turned',
+    summaryBanishedVerb: 'staked',
     tipIcon: '🦇',
     tipTitle: 'The night is over, darling.',
     tipBody: 'Survived the feeding? This game is free and made with ❤️.<br>A small tip keeps the coffins lit!',
@@ -368,7 +319,20 @@ const THEMES = {
     faithfulWinDesc: 'Every assassin has been unmasked. The nobility is safe — for tonight.',
     recruitedTitle: "You've Been Sworn In! 🗡️",
     recruitedDesc: "The order has chosen you. You serve them now.<br>Keep your mask on and your loyalties hidden.",
+    recruitedWitnessTitle: 'The Order Expands 🗡️',
+    recruitedWitnessDesc: '{name} has been sworn in. The order gains a new blade.',
     fellowTraitorsLabel: 'Your Order',
+    // Shield
+    shieldName: 'Hidden Bodyguard',
+    shieldIcon: '🤺',
+    shieldWonText: 'A hidden bodyguard was secretly retained overnight.',
+    shieldNoneText: 'No bodyguard was retained overnight.',
+    shieldBlockedDesc: 'intercepted the blade!',
+    shieldNotUsedDesc: 'bodyguard stood down',
+    // Game summary
+    summaryMurderedVerb: 'struck down',
+    summaryRecruitedVerb: 'sworn in',
+    summaryBanishedVerb: 'unmasked',
     tipIcon: '🎭',
     tipTitle: 'The masks come off.',
     tipBody: 'The ball is over. This game is free and made with ❤️.<br>A small tip keeps the chandeliers lit!',
@@ -418,7 +382,20 @@ const THEMES = {
     faithfulWinDesc: 'Every last spy has been exposed and exiled. The Crown endures.',
     recruitedTitle: "You've Been Compromised! 🔏",
     recruitedDesc: "The network has turned you. You work against the manor now.<br>Do keep up appearances, there's a good chap.",
+    recruitedWitnessTitle: 'The Network Expands 🔏',
+    recruitedWitnessDesc: '{name} has been compromised. Handle with care, old sport.',
     fellowTraitorsLabel: 'Your Network',
+    // Shield
+    shieldName: 'Safe Room',
+    shieldIcon: '🔒',
+    shieldWonText: 'A safe room was quietly prepared overnight.',
+    shieldNoneText: 'No safe room was prepared overnight.',
+    shieldBlockedDesc: 'foiled the sabotage!',
+    shieldNotUsedDesc: 'safe room unused',
+    // Game summary
+    summaryMurderedVerb: 'eliminated',
+    summaryRecruitedVerb: 'compromised',
+    summaryBanishedVerb: 'exiled',
     tipIcon: '🍵',
     tipTitle: 'The manor has spoken.',
     tipBody: "Scandal averted — or not. This game is free and made with ❤️.<br>A small tip keeps the kettle on!",
@@ -468,7 +445,20 @@ const THEMES = {
     faithfulWinDesc: "Every last pirate has been marooned! The seas belong to the sailors. ARRR! ⚓",
     recruitedTitle: "Ye've Been Shanghaied! 🦜",
     recruitedDesc: "The pirates dragged ye over in the night, ye poor fool. You sail under their flag now.<br>Try to look like ye meant to do that.",
+    recruitedWitnessTitle: "The Crew Grows! 🦜",
+    recruitedWitnessDesc: '{name} has been shanghaied. Welcome the poor sod to the crew.',
     fellowTraitorsLabel: 'Yer Scurvy Crew',
+    // Shield
+    shieldName: 'Protective Parrot',
+    shieldIcon: '🦜',
+    shieldWonText: "A protective parrot was secretly claimed overnight. Arrr.",
+    shieldNoneText: "No protective parrot was found overnight.",
+    shieldBlockedDesc: "squawked the pirates away! Arrr!",
+    shieldNotUsedDesc: 'parrot not used',
+    // Game summary
+    summaryMurderedVerb: 'thrown overboard',
+    summaryRecruitedVerb: 'shanghaied',
+    summaryBanishedVerb: 'marooned',
     tipIcon: '🦜',
     tipTitle: "Voyage complete, ye salty dog. 🏴‍☠️",
     tipBody: "Made it out alive — or did ye walk the plank? This game is free and made with ❤️.<br>A small tip keeps the ship afloat, arrr!",
@@ -617,6 +607,7 @@ let enabledNightChallengesCreate = NIGHT_CHALLENGE_OPTIONS.map(o => o.id); // de
 let roleAssignmentModeCreate = 'random'; // 'random' | 'weighted'
 let forcedRecruitThresholdCreate = 6;   // min alive players for solo-traitor forced recruit (4–10)
 let recruitOnTwoTraitorsCreate = true;  // allow optional recruit when traitors drop to 2
+let shieldsEnabledCreate = true;        // shield mechanic: best mini-game scorer is secretly protected
 
 // Apply default theme on page load
 applyTheme('vampire');
@@ -799,6 +790,16 @@ document.getElementById('btn-traitors-up').addEventListener('click', () => {
       });
     });
   });
+
+  // Shields toggle
+  document.querySelectorAll('#shields-toggle .setting-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      shieldsEnabledCreate = btn.dataset.value === 'on';
+      document.querySelectorAll('#shields-toggle .setting-toggle-btn').forEach(b => {
+        b.classList.toggle('active', (b.dataset.value === 'on') === shieldsEnabledCreate);
+      });
+    });
+  });
 })();
 
 // Theme picker
@@ -832,6 +833,7 @@ document.getElementById('btn-create-game').addEventListener('click', () => {
     roleAssignmentMode: roleAssignmentModeCreate,
     forcedRecruitThreshold: forcedRecruitThresholdCreate,
     recruitOnTwoTraitors: recruitOnTwoTraitorsCreate,
+    shieldsEnabled: shieldsEnabledCreate,
   }, (res) => {
     if (res.error) { errEl.textContent = res.error; return; }
     gameCode = res.code;
@@ -1131,6 +1133,7 @@ function renderLobby(state, content, hostControls) {
     let lobbySpnTicks = state.shotsPerNightTicks || Math.max(1, Math.min(20, Math.round((state.shotsPerNight || 1) * 4)));
     let lobbyFrt = state.forcedRecruitThreshold !== undefined ? state.forcedRecruitThreshold : 6;
     let lobbyR2t = state.recruitOnTwoTraitors !== undefined ? state.recruitOnTwoTraitors : true;
+    let lobbyShields = state.shieldsEnabled !== undefined ? state.shieldsEnabled : false;
     const lobbyNightChallengesAll = (Array.isArray(state.nightChallengesAll) && state.nightChallengesAll.length)
       ? state.nightChallengesAll
       : NIGHT_CHALLENGE_OPTIONS.map(o => o.id);
@@ -1238,6 +1241,14 @@ function renderLobby(state, content, hostControls) {
           </div>
         </div>
         <div class="advanced-setting-row">
+          <div class="advanced-setting-label">${currentTheme.shieldIcon} ${escHtml(currentTheme.shieldName)}s</div>
+          <div class="advanced-setting-hint">Each night, the faithful player with the best mini-game score secretly wins a ${escHtml(currentTheme.shieldName.toLowerCase())}. If the traitors target them, the attack is blocked. A hint is shown before the morning reveal — but who won stays secret, even from the winner.</div>
+          <div class="setting-toggle-group" id="lobby-shields-toggle" style="margin-top:8px">
+            <button class="setting-toggle-btn ${lobbyShields ? 'active' : ''}" data-value="on">${currentTheme.shieldIcon} Enabled</button>
+            <button class="setting-toggle-btn ${!lobbyShields ? 'active' : ''}" data-value="off">🚫 Disabled</button>
+          </div>
+        </div>
+        <div class="advanced-setting-row">
           <div class="advanced-setting-label">🎲 Night Challenges</div>
           <div class="advanced-setting-hint">Toggle which mini-games can appear at night. At least one must stay enabled.</div>
           <div class="challenge-toggle-grid" id="lobby-night-challenges" style="margin-top:8px">
@@ -1260,7 +1271,7 @@ function renderLobby(state, content, hostControls) {
         </button>
       </div>
       ${!canStart ? '<p class="text-center text-muted" style="font-size:0.75rem;margin-top:4px">Need at least 4 players</p>' : ''}
-      <p class="lobby-settings-summary">${state.numTraitors !== undefined ? `${state.numTraitors} ${currentTheme.traitorName}${state.numTraitors !== 1 ? 's' : ''} &nbsp;·&nbsp; ${state.roleAssignmentMode === 'weighted' ? '⚖️ Weighted' : '🎲 Random'} &nbsp;·&nbsp; 🏆 ${pm === 'SHOTS' ? 'Shots' : 'Cash'} &nbsp;·&nbsp; ${pm === 'SHOTS' ? `🥃 up to ${formatShots(spnTicks)} / night (25% steps)` : `💰 ${formatMoney(nct)}/night`} &nbsp;·&nbsp; 🔥 Finale ${threshold} &nbsp;·&nbsp; 🎭 Hide @${hideAt} &nbsp;·&nbsp; ⚖️ ${tieMode === 'random' ? 'Random' : 'Host'} pick &nbsp;·&nbsp; 🩸 Forced recruit @${frt}+ &nbsp;·&nbsp; 🤝 Recruit@2 ${r2t ? 'on' : 'off'}` : ''}</p>
+      <p class="lobby-settings-summary">${state.numTraitors !== undefined ? `${state.numTraitors} ${currentTheme.traitorName}${state.numTraitors !== 1 ? 's' : ''} &nbsp;·&nbsp; ${state.roleAssignmentMode === 'weighted' ? '⚖️ Weighted' : '🎲 Random'} &nbsp;·&nbsp; 🏆 ${pm === 'SHOTS' ? 'Shots' : 'Cash'} &nbsp;·&nbsp; ${pm === 'SHOTS' ? `🥃 up to ${formatShots(spnTicks)} / night (25% steps)` : `💰 ${formatMoney(nct)}/night`} &nbsp;·&nbsp; 🔥 Finale ${threshold} &nbsp;·&nbsp; 🎭 Hide @${hideAt} &nbsp;·&nbsp; ⚖️ ${tieMode === 'random' ? 'Random' : 'Host'} pick &nbsp;·&nbsp; 🩸 Forced recruit @${frt}+ &nbsp;·&nbsp; 🤝 Recruit@2 ${r2t ? 'on' : 'off'} &nbsp;·&nbsp; 🛡️ Shields ${lobbyShields ? 'on' : 'off'}` : ''}</p>
     `;
 
     // Settings gear toggle — uses module-level flag so re-renders keep the panel open
@@ -1501,6 +1512,20 @@ function renderLobby(state, content, hostControls) {
       });
     });
 
+    // Shields toggle (lobby)
+    document.querySelectorAll('#lobby-shields-toggle .setting-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.value === 'on';
+        lobbyShields = val;
+        document.querySelectorAll('#lobby-shields-toggle .setting-toggle-btn').forEach(b => {
+          b.classList.toggle('active', (b.dataset.value === 'on') === val);
+        });
+        socket.emit('update_lobby_settings', { shieldsEnabled: val }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      });
+    });
+
     // Night challenge toggles (lobby)
     document.querySelectorAll('#lobby-night-challenges [data-nc]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1648,7 +1673,9 @@ function renderNight(state, content, hostControls, phaseChanged) {
       content.innerHTML = `
         ${waitingScreenHtml}
         <div class="night-cover-toggle">
-          <button id="btn-toggle-cover" class="night-cover-reveal-btn">🗡️ Show my controls</button>
+          <button id="btn-toggle-cover" class="night-cover-reveal-btn">
+            ${isRecruit ? '🤝' : '🗡️'} Show my controls
+          </button>
         </div>
       `;
     }
@@ -1668,19 +1695,19 @@ function renderNight(state, content, hostControls, phaseChanged) {
   const actionTitle = isMurder ? currentTheme.murderTitle : currentTheme.recruitTitle;
 
   // Night mode choice (only if canChooseNightMode)
+  // The active mode button is clearly highlighted; the inactive one is ghost/dimmed.
   let modeChoiceHtml = '';
-  if (state.canChooseNightMode && nightMode === 'RECRUIT') {
+  if (state.canChooseNightMode) {
+    const murderActive  = nightMode === 'MURDER';
+    const recruitActive = nightMode === 'RECRUIT';
     modeChoiceHtml = `
       <div class="night-choice-row mb-16">
-        <button class="btn btn-danger" id="btn-choose-murder">${currentTheme.traitorIcon} ${currentTheme.murderBanner.split(' ')[0]}</button>
-        <button class="btn btn-ghost" id="btn-choose-recruit">🤝 ${currentTheme.recruitBanner.split(' ')[0]}</button>
-      </div>
-    `;
-  } else if (state.canChooseNightMode && nightMode === 'MURDER') {
-    modeChoiceHtml = `
-      <div class="night-choice-row mb-16">
-        <button class="btn btn-danger" id="btn-choose-murder" style="border:2px solid var(--red)">${currentTheme.traitorIcon} ${currentTheme.murderBanner.split(' ')[0]}</button>
-        <button class="btn btn-ghost" id="btn-choose-recruit">🤝 ${currentTheme.recruitBanner.split(' ')[0]}</button>
+        <button class="btn ${murderActive  ? 'btn-danger active-mode' : 'btn-ghost'}" id="btn-choose-murder">
+          ${currentTheme.traitorIcon} ${currentTheme.murderBanner}${murderActive ? ' ✓' : ''}
+        </button>
+        <button class="btn ${recruitActive ? 'btn-teal  active-mode' : 'btn-ghost'}" id="btn-choose-recruit">
+          🤝 ${currentTheme.recruitBanner}${recruitActive ? ' ✓' : ''}
+        </button>
       </div>
     `;
   }
@@ -1731,6 +1758,13 @@ function renderNight(state, content, hostControls, phaseChanged) {
     </div>
 
     <div class="night-mode-banner ${modeClass}">${modeLabel}</div>
+
+    ${isRecruit ? `
+      <div class="recruit-context-desc">
+        🤝 Pick a ${escHtml(currentTheme.faithfulName)} to secretly bring to your side.
+        They will join your team — no one else will know until the game ends.
+      </div>
+    ` : ''}
 
     ${modeChoiceHtml}
 
@@ -1874,6 +1908,20 @@ function renderMorning(state, content, hostControls) {
 
   // ── PRE-REVEAL: host hasn't triggered morning yet ─────────────────────────
   if (!revealStarted) {
+    const shieldIndicatorHtml = state.shieldsEnabled ? `
+      <div class="info-box ${state.shieldWonThisNight ? 'shield-won' : 'shield-none'} mb-16" style="text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:4px">${state.shieldWonThisNight ? currentTheme.shieldIcon : '🚫'}</div>
+        <div style="font-weight:900;letter-spacing:0.06em;text-transform:uppercase;font-size:0.7rem;margin-bottom:4px">
+          ${escHtml(currentTheme.shieldName)} Update
+        </div>
+        <div style="font-size:0.95rem">
+          ${state.shieldWonThisNight
+            ? escHtml(currentTheme.shieldWonText)
+            : escHtml(currentTheme.shieldNoneText)}
+        </div>
+      </div>
+    ` : '';
+
     content.innerHTML = `
       <div class="night-waiting">
         <div class="night-waiting-icon">🌅</div>
@@ -1896,6 +1944,7 @@ function renderMorning(state, content, hostControls) {
           </div>
         </div>
       ` : ''}
+      ${shieldIndicatorHtml}
     `;
     if (state.isHost) {
       hostControls.innerHTML = `
@@ -1980,17 +2029,24 @@ function renderMorning(state, content, hostControls) {
     ${resultHtml}
   `;
 
-  // ── COMPLETE: show recruited banner privately for newly-turned traitors ────
+  // ── COMPLETE: show recruited banner privately for traitors on recruitment nights ────
   if (revealComplete) {
-    const isNewTraitor = state.myRole === 'TRAITOR' && wasRecruited && !recruitedShown;
-    if (isNewTraitor) {
+    const isNewlyRecruited = state.myRole === 'TRAITOR' && wasRecruited && state.recruitedPlayerId === myId && !recruitedShown;
+    const isWitnessTraitor  = state.myRole === 'TRAITOR' && wasRecruited && state.recruitedPlayerId && state.recruitedPlayerId !== myId && !recruitedShown;
+    if (isNewlyRecruited || isWitnessTraitor) {
       recruitedShown = true;
+      const bannerTitle = isNewlyRecruited
+        ? currentTheme.recruitedTitle
+        : currentTheme.recruitedWitnessTitle;
+      const bannerDesc = isNewlyRecruited
+        ? currentTheme.recruitedDesc
+        : (currentTheme.recruitedWitnessDesc || '').replace('{name}', escHtml(state.recruitedPlayerName || ''));
       content.innerHTML = `
         <div class="recruited-banner">
           <div style="font-size:64px;margin-bottom:16px">🤝</div>
-          <h2>${currentTheme.recruitedTitle}</h2>
+          <h2>${bannerTitle}</h2>
           <p style="color:var(--text-dim);font-family:var(--font-body);font-style:italic;font-size:1.05rem;line-height:1.6;margin-bottom:20px">
-            ${currentTheme.recruitedDesc}
+            ${bannerDesc}
           </p>
           ${(state.traitorNames || []).filter(t => t.id !== myId).length > 0 ? `
             <div class="info-box red" style="text-align:left">
@@ -2698,6 +2754,89 @@ function renderEndGameVoteReveal(state, content, hostControls) {
   }
 }
 
+// ─── GAME SUMMARY BUILDER ────────────────────────────────────────────────────
+// Builds the themed chronological recap shown after the final role reveal.
+function buildGameSummaryHtml(history, t, shieldsEnabled) {
+  if (!history || history.length === 0) return '';
+
+  const rows = history.map(event => {
+    // ── Game start: traitor assignments ──────────────────────────────────────
+    if (event.type === 'GAME_START') {
+      const names = event.traitorNames.map(n => escHtml(n)).join(', ');
+      const plural = event.traitorNames.length !== 1;
+      return `
+        <div class="gs-row gs-start">
+          <span class="gs-label">Start</span>
+          <span class="gs-text">
+            ${t.traitorIcon} <strong>${names}</strong>
+            ${plural ? 'were' : 'was'} secretly assigned as
+            <span class="gs-role traitor">${escHtml(plural ? t.traitorName + 'S' : t.traitorName)}</span>
+          </span>
+        </div>`;
+    }
+
+    // ── Night events ─────────────────────────────────────────────────────────
+    if (event.type === 'NIGHT') {
+      const label = `Night ${event.night}`;
+      const isRecruit = event.nightMode === 'RECRUIT' || event.nightMode === 'FORCED_RECRUIT';
+      let parts = [];
+
+      if (isRecruit) {
+        if (event.recruitedName) {
+          parts.push(`🤝 <strong>${escHtml(event.recruitedName)}</strong> was ${escHtml(t.summaryRecruitedVerb)} to the <span class="gs-role traitor">${escHtml(t.traitorName)}</span> side`);
+        } else {
+          parts.push(`🤝 A ${escHtml(t.faithfulName)} was ${escHtml(t.summaryRecruitedVerb)}`);
+        }
+      } else if (event.shieldUsed) {
+        // Shield blocked the murder — highlight it prominently
+        parts.push(`${t.shieldIcon} <strong>${escHtml(event.shieldWinnerName)}</strong> ${escHtml(t.shieldBlockedDesc)} — no one was taken`);
+      } else if (event.murderedName) {
+        parts.push(`${t.traitorIcon} <strong>${escHtml(event.murderedName)}</strong> was ${escHtml(t.summaryMurderedVerb)}`);
+      } else {
+        // Quiet murder night with no shield use (edge case)
+        parts.push(`${t.nightIcon || '🌙'} A quiet night — no one was taken`);
+      }
+
+      // Shield detail (if enabled and not used as block line above)
+      if (shieldsEnabled && !event.shieldUsed) {
+        if (event.shieldWinnerName) {
+          parts.push(`${t.shieldIcon} <span class="gs-muted">${escHtml(event.shieldWinnerName)} won the ${escHtml(t.shieldName)} (unused)</span>`);
+        } else if (!isRecruit) {
+          parts.push(`${t.shieldIcon} <span class="gs-muted">No ${escHtml(t.shieldName.toLowerCase())} awarded</span>`);
+        }
+      }
+
+      return `
+        <div class="gs-row gs-night">
+          <span class="gs-label">${escHtml(label)}</span>
+          <span class="gs-text">${parts.join('<span class="gs-sep"> · </span>')}</span>
+        </div>`;
+    }
+
+    // ── Banishment events ─────────────────────────────────────────────────────
+    if (event.type === 'BANISHMENT') {
+      const label = `Day ${event.day}`;
+      const isTraitor = event.role === 'TRAITOR';
+      const roleIcon  = isTraitor ? t.traitorIcon  : t.faithfulIcon;
+      const roleName  = isTraitor ? t.traitorName  : t.faithfulName;
+      return `
+        <div class="gs-row gs-day">
+          <span class="gs-label">${escHtml(label)}</span>
+          <span class="gs-text">
+            ${roleIcon} <strong>${escHtml(event.playerName)}</strong> was ${escHtml(t.summaryBanishedVerb)}
+            — <span class="gs-role ${event.role.toLowerCase()}">${escHtml(roleName)}</span>
+          </span>
+        </div>`;
+    }
+
+    return '';
+  }).join('');
+
+  return `
+    <div class="section-label mb-12" style="margin-top:24px">📜 Game Summary</div>
+    <div class="game-summary-list">${rows}</div>`;
+}
+
 // ─── GAME OVER ───────────────────────────────────────────────────────────────
 function renderGameOver(state, content, hostControls) {
   const winner = state.winner;
@@ -2775,6 +2914,8 @@ function renderGameOver(state, content, hostControls) {
 
     <div class="section-label mb-12">Final Roles</div>
     <div>${allRoles.map(roleCardHtml).join('')}</div>
+
+    ${buildGameSummaryHtml(state.gameHistory, currentTheme, Array.isArray(state.shieldHistory))}
   `;
 
   if (state.isHost) {
@@ -3570,12 +3711,12 @@ function renderStroopHtml(local) {
         <div class="night-challenge-done-sub">Final score: ${local.correct} / ${local.tasks}</div>
       ` : `
         <div class="night-challenge-stroop-word" style="color:${inkHex}">${escHtml(round.word)}</div>
-        <div class="night-challenge-grid">
+        <div class="stroop-instruction">Tap the colour the word is written in</div>
+        <div class="stroop-color-grid">
           ${(round.options || []).map(opt => `
-            <button class="btn btn-secondary night-challenge-choice" data-nc-stroop="${opt}">
-              <span class="night-challenge-swatch" style="background:${STROOP_COLOR_HEX[opt] || '#999'}"></span>
-              ${escHtml(opt)}
-            </button>
+            <button class="stroop-color-btn" data-nc-stroop="${opt}"
+                    style="background:${STROOP_COLOR_HEX[opt] || '#999'}"
+                    aria-label="${opt}"></button>
           `).join('')}
         </div>
         ${local.lastFeedback ? `<div class="night-challenge-feedback">${escHtml(local.lastFeedback)}</div>` : ''}

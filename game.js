@@ -121,7 +121,7 @@ function generateCode() {
 // Game class
 // ─────────────────────────────────────────────────────────────────────────────
 class Game {
-  constructor(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors) {
+  constructor(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors, shieldsEnabled) {
     this.code = generateCode();
     this.phase = PHASES.LOBBY;
     this.numTraitors = numTraitors;
@@ -162,6 +162,13 @@ class Game {
       eliminated: false,
     });
 
+    // Shields
+    this.shieldsEnabled = shieldsEnabled !== false; // default true
+    this.currentShieldHolderId = null; // socketId of this night's shield winner (server-only, never sent)
+    this.shieldWonThisNight = false;   // whether a shield was awarded this night (sent to clients, no identity)
+    // History revealed at game over: [{ night, winnerName, shieldUsed }]
+    this.shieldHistory = [];
+
     // Night state
     this.nightMode = null;         // MURDER | RECRUIT | FORCED_RECRUIT
     this.traitorSelections = {};   // socketId -> targetSocketId
@@ -170,6 +177,8 @@ class Game {
     this.lastMurderVictimId = null;
     this.lastMurderVictimName = null;
     this.recruitedThisRound = false;
+    this.recruitedPlayerId = null;
+    this.recruitedPlayerName = null;
 
     // Morning reveal state
     this.morningRevealOrder = [];   // shuffled socketIds of alive players to walk in
@@ -230,6 +239,22 @@ class Game {
     // Player role-desire weights — socketId → 1..10 (default 5). Only used when mode is 'weighted'.
     this.playerWeights = {};
     this.playerWeights[hostSocketId] = 3;
+
+    // Monotonically increasing counter stamped onto each player the moment they are eliminated.
+    // Used at end-game to reveal eliminated players in the exact order they left the game.
+    this.eliminationCounter = 0;
+
+    // Chronological game-history log — each entry is a plain object pushed as events occur.
+    // Sent to all clients in the GAME_OVER payload for the post-game summary.
+    // Entry shapes:
+    //   { type: 'GAME_START',   traitorNames: string[] }
+    //   { type: 'NIGHT',        night: number, nightMode: string,
+    //                           murderedName: string|null, recruitedName: string|null,
+    //                           shieldWinnerName: string|null, shieldUsed: bool }
+    //   { type: 'BANISHMENT',   day: number, playerName: string, role: string }
+    this.gameHistory = [];
+    this._nightCount = 0;   // incremented at the start of every night
+    this._dayCount   = 0;   // incremented at every banishment
   }
 
   // ─── Player helpers ────────────────────────────────────────────────────────
@@ -290,7 +315,7 @@ class Game {
     }
   }
 
-  updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors }) {
+  updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors, shieldsEnabled }) {
     if (this.phase !== PHASES.LOBBY) return { error: 'Game already started' };
     if (maxPlayers !== undefined) {
       const mp = Math.min(30, Math.max(3, parseInt(maxPlayers) || 30));
@@ -343,6 +368,9 @@ class Game {
     }
     if (recruitOnTwoTraitors !== undefined) {
       this.recruitOnTwoTraitors = recruitOnTwoTraitors === false ? false : true;
+    }
+    if (shieldsEnabled !== undefined) {
+      this.shieldsEnabled = !!shieldsEnabled;
     }
     return { ok: true };
   }
@@ -420,6 +448,15 @@ class Game {
 
     this.phase = PHASES.ROLE_REVEAL;
     this.round = 1;
+
+    // Record traitor assignments for the post-game summary
+    this.gameHistory.push({
+      type: 'GAME_START',
+      traitorNames: this.players
+        .filter(p => p.role === ROLES.TRAITOR)
+        .map(p => p.name),
+    });
+
     return { ok: true };
   }
 
@@ -432,6 +469,7 @@ class Game {
   // ─── Night logic ───────────────────────────────────────────────────────────
 
   _beginNight() {
+    this._nightCount++;
     const traitors = this.getAliveTraitors();
     const aliveCount = this.getAlivePlayers().length;
 
@@ -456,6 +494,11 @@ class Game {
     this.traitorSelections = {};
     this.traitorLockIns = new Set();
     this.recruitedThisRound = false;
+    this.recruitedPlayerId = null;
+    this.recruitedPlayerName = null;
+    // Reset shield state for this night
+    this.currentShieldHolderId = null;
+    this.shieldWonThisNight = false;
     // Start a fresh night challenge each night (shuffle-bag to avoid repeats)
     this.currentNightChallenge = this._pickNextNightChallenge();
     this.nightChallengeProgress = {};
@@ -504,7 +547,11 @@ class Game {
     const total = Math.max(1, Math.min(tasksPerPlayer, parseInt(progress?.total) || tasksPerPlayer));
     const finished = !!progress?.finished;
 
-    this.nightChallengeProgress[socketId] = { correct, total, finished };
+    // Preserve the original finishedAt timestamp — only set it once, when finished first becomes true
+    const prevFinishedAt = this.nightChallengeProgress[socketId]?.finishedAt || null;
+    const finishedAt = finished ? (prevFinishedAt || Date.now()) : null;
+
+    this.nightChallengeProgress[socketId] = { correct, total, finished, finishedAt };
     return { ok: true };
   }
 
@@ -605,6 +652,50 @@ class Game {
     return selections.every(s => s === selections[0]);
   }
 
+  // ─── Shield winner computation ──────────────────────────────────────────────
+  // Returns the socketId of the faithful player who wins the shield this night,
+  // or null if shields are disabled or every player scored 0.
+  //
+  // By the time this runs, _resolveNight has already stamped finishedAt on any
+  // player who hadn't finished yet, so every player always has a finishedAt.
+  //
+  // Algorithm:
+  //   1. Find the highest `correct` score among all alive faithful players.
+  //   2. If the max score is 0, no shield is awarded.
+  //   3. Among players who share that max score, pick the one whose finishedAt
+  //      is earliest (genuine finishers beat lock-in-stamped players in a tie).
+  _computeShieldWinner() {
+    if (!this.shieldsEnabled) return null;
+
+    const faithful = this.getAliveFaithful();
+    if (faithful.length === 0) return null;
+
+    // Step 1: find highest correct score across all faithful
+    let maxCorrect = 0;
+    faithful.forEach(fp => {
+      const prog = this.nightChallengeProgress[fp.socketId];
+      if (prog) maxCorrect = Math.max(maxCorrect, prog.correct || 0);
+    });
+
+    // Step 2: if everyone scored 0, no shield
+    if (maxCorrect === 0) return null;
+
+    // Step 3: filter to those with max score who finished, sort by finishedAt ascending
+    const candidates = faithful
+      .filter(fp => {
+        const prog = this.nightChallengeProgress[fp.socketId];
+        return prog && (prog.correct || 0) === maxCorrect && prog.finishedAt;
+      })
+      .sort((a, b) => {
+        const aT = this.nightChallengeProgress[a.socketId].finishedAt;
+        const bT = this.nightChallengeProgress[b.socketId].finishedAt;
+        return aT - bT;
+      });
+
+    // Step 4: if nobody with the top score finished, no shield
+    return candidates.length > 0 ? candidates[0].socketId : null;
+  }
+
   _resolveNight() {
     const traitors = this.getAliveTraitors();
     const targetId = this.traitorSelections[traitors[0].socketId];
@@ -623,19 +714,87 @@ class Game {
       };
     }
 
+    // At the moment the traitors lock in, stamp any faithful player who hasn't
+    // finished the mini-game yet. This ensures every player is eligible for the
+    // shield tiebreak based on their score at the time of lock-in. Players who
+    // genuinely finished earlier will always have a lower finishedAt and still
+    // win any tiebreak. Only their correct count is preserved — not inflated.
+    if (this.shieldsEnabled && this.currentNightChallenge) {
+      const lockInTime = Date.now();
+      const tasksPerPlayer = this.currentNightChallenge.tasksPerPlayer || 1;
+      this.getAliveFaithful().forEach(fp => {
+        const prog = this.nightChallengeProgress[fp.socketId];
+        if (!prog || !prog.finishedAt) {
+          this.nightChallengeProgress[fp.socketId] = {
+            correct:    prog ? (prog.correct || 0) : 0,
+            total:      prog ? (prog.total   || tasksPerPlayer) : tasksPerPlayer,
+            finished:   true,
+            finishedAt: lockInTime,
+          };
+        }
+      });
+    }
+
+    // Compute shield winner (always, so shieldWonThisNight is accurate for the indicator)
+    const shieldWinnerId = this._computeShieldWinner();
+    this.currentShieldHolderId = shieldWinnerId;
+    this.shieldWonThisNight = shieldWinnerId !== null;
+
+    // Record this night's shield outcome for the end-of-game reveal
+    if (this.shieldsEnabled) {
+      const shieldWinnerPlayer = shieldWinnerId ? this.getPlayer(shieldWinnerId) : null;
+      const shieldUsed = this.nightMode === NIGHT_MODES.MURDER
+        && shieldWinnerId !== null
+        && shieldWinnerId === targetId;
+      this.shieldHistory.push({
+        night: this.round,
+        winnerName: shieldWinnerPlayer ? shieldWinnerPlayer.name : null,
+        shieldUsed,
+      });
+    }
+
     if (this.nightMode === NIGHT_MODES.MURDER) {
-      target.alive = false;
-      target.eliminated = true;
-      target.eliminatedBy = 'MURDER';
-      this.lastMurderVictimId = targetId;
-      this.lastMurderVictimName = target.name;
+      const shielded = shieldWinnerId !== null && shieldWinnerId === targetId;
+      if (shielded) {
+        // Murder blocked — target walks away untouched; nobody is told who was shielded
+        this.lastMurderVictimId = null;
+        this.lastMurderVictimName = null;
+      } else {
+        target.alive = false;
+        target.eliminated = true;
+        target.eliminatedBy = 'MURDER';
+        target.eliminationOrder = ++this.eliminationCounter;
+        this.lastMurderVictimId = targetId;
+        this.lastMurderVictimName = target.name;
+      }
     } else {
       // RECRUIT or FORCED_RECRUIT
       target.role = ROLES.TRAITOR;
       this.recruitedThisRound = true;
+      this.recruitedPlayerId = targetId;
+      this.recruitedPlayerName = target.name;
       if (traitors.length >= 2) this.groupRecruitUsed = true;
       this.lastMurderVictimId = null;
       this.lastMurderVictimName = null;
+    }
+
+    // Record what happened this night for the post-game summary
+    {
+      const shieldWinnerPlayer = shieldWinnerId ? this.getPlayer(shieldWinnerId) : null;
+      const shieldUsed = this.nightMode === NIGHT_MODES.MURDER
+        && shieldWinnerId !== null
+        && shieldWinnerId === targetId;
+      this.gameHistory.push({
+        type: 'NIGHT',
+        night: this._nightCount,
+        nightMode: this.nightMode,
+        murderedName:    this.lastMurderVictimName,
+        recruitedName:   (this.nightMode !== NIGHT_MODES.MURDER && target) ? target.name : null,
+        shieldWinnerName: this.shieldsEnabled
+          ? (shieldWinnerPlayer ? shieldWinnerPlayer.name : null)
+          : null,
+        shieldUsed: this.shieldsEnabled ? shieldUsed : false,
+      });
     }
 
     this.phase = PHASES.MORNING;
@@ -856,6 +1015,16 @@ class Game {
     p.alive = false;
     p.eliminated = true;
     p.eliminatedBy = 'BANISHMENT';
+    p.eliminationOrder = ++this.eliminationCounter;
+
+    // Record this banishment for the post-game summary
+    this._dayCount++;
+    this.gameHistory.push({
+      type: 'BANISHMENT',
+      day: this._dayCount,
+      playerName: p.name,
+      role: p.role,
+    });
 
     const wasTraitor = p.role === ROLES.TRAITOR;
     if (wasTraitor) this._traitorWasJustBanished = true;
@@ -928,10 +1097,21 @@ class Game {
       name: p.name,
       role: p.role,
     }));
-    // Set up drip reveal order: non-traitors first (random), traitors last (random)
-    const nonTraitors = this.players.filter(p => p.role !== ROLES.TRAITOR).sort(() => Math.random() - 0.5);
-    const traitors    = this.players.filter(p => p.role === ROLES.TRAITOR).sort(() => Math.random() - 0.5);
-    this.gameOverRevealOrder = [...nonTraitors, ...traitors].map(p => p.socketId);
+    // Set up drip reveal order:
+    //  1. Eliminated players in exact elimination order (murdered/banished first → last)
+    //  2. Surviving non-traitors in random order
+    //  3. Surviving traitors in random order
+    const realPlayers = this.players.filter(p => !p.spectator);
+    const eliminated = realPlayers
+      .filter(p => p.eliminated)
+      .sort((a, b) => (a.eliminationOrder || 0) - (b.eliminationOrder || 0));
+    const survivingNonTraitors = realPlayers
+      .filter(p => !p.eliminated && p.role !== ROLES.TRAITOR)
+      .sort(() => Math.random() - 0.5);
+    const survivingTraitors = realPlayers
+      .filter(p => !p.eliminated && p.role === ROLES.TRAITOR)
+      .sort(() => Math.random() - 0.5);
+    this.gameOverRevealOrder = [...eliminated, ...survivingNonTraitors, ...survivingTraitors].map(p => p.socketId);
     this.gameOverRevealIndex = 0;
     this.gameOverRevealComplete = false;
     return { ok: true, gameOver: true, winner };
@@ -1041,6 +1221,8 @@ class Game {
       numTraitors: isHost ? this.numTraitors : undefined,
       maxPlayers: this.maxPlayers,
 
+      shieldsEnabled: this.shieldsEnabled,
+
       // Prize pool + night challenge (always visible; contains no player counts)
       prizePool: this.prizePool || 0,
       prizeMode: this.prizeMode,
@@ -1120,6 +1302,11 @@ class Game {
         payload.lastMurderVictimName = this.morningRevealComplete ? this.lastMurderVictimName : null;
         payload.lastMurderVictimId   = this.morningRevealComplete ? this.lastMurderVictimId   : null;
         payload.recruitedThisRound   = this.recruitedThisRound;
+        // Expose recruited player identity to traitors after reveal completes
+        if (isTraitor && this.morningRevealComplete) {
+          payload.recruitedPlayerId   = this.recruitedPlayerId;
+          payload.recruitedPlayerName = this.recruitedPlayerName;
+        }
         // Players revealed so far (walked in)
         payload.morningRevealedPlayers = this.morningRevealOrder
           .slice(0, this.morningRevealIndex)
@@ -1136,6 +1323,9 @@ class Game {
             isMe: t.socketId === socketId,
           }));
         }
+
+        // Shield indicator — only reveals WHETHER a shield was won, never who won it
+        payload.shieldWonThisNight = this.shieldWonThisNight;
 
         // Show what was earned during the night (no counts)
         payload.lastNightChallengeResult = this.lastNightChallengeResult
@@ -1283,6 +1473,14 @@ class Game {
         // Back-compat for older client fields
         payload.winningShare = payload.payoutShare;
         payload.winningTeam = this.winner;
+
+        // Shield history — only sent when shields were enabled for this game
+        if (this.shieldsEnabled) {
+          payload.shieldHistory = this.shieldHistory;
+        }
+
+        // Full chronological game summary (always sent)
+        payload.gameHistory = this.gameHistory;
         break;
       }
     }
@@ -1296,10 +1494,10 @@ class Game {
 // ─────────────────────────────────────────────────────────────────────────────
 const games = new Map(); // code -> Game
 
-function createGame(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors) {
+function createGame(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors, shieldsEnabled) {
   let code;
   do { code = generateCode(); } while (games.has(code));
-  const game = new Game(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors);
+  const game = new Game(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges, roleAssignmentMode, forcedRecruitThreshold, recruitOnTwoTraitors, shieldsEnabled);
   game.code = code;
   games.set(code, game);
   return game;
