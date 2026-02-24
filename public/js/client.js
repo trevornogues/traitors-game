@@ -615,6 +615,8 @@ const NIGHT_CHALLENGE_LABEL_MAP = NIGHT_CHALLENGE_OPTIONS.reduce((acc, o) => {
 
 let enabledNightChallengesCreate = NIGHT_CHALLENGE_OPTIONS.map(o => o.id); // default: all on
 let roleAssignmentModeCreate = 'random'; // 'random' | 'weighted'
+let forcedRecruitThresholdCreate = 6;   // min alive players for solo-traitor forced recruit (4–10)
+let recruitOnTwoTraitorsCreate = true;  // allow optional recruit when traitors drop to 2
 
 // Apply default theme on page load
 applyTheme('vampire');
@@ -776,6 +778,27 @@ document.getElementById('btn-traitors-up').addEventListener('click', () => {
       });
     });
   });
+
+  // Forced recruit threshold stepper (create screen)
+  function updateFrtDisplay() {
+    document.getElementById('frt-display').textContent = forcedRecruitThresholdCreate;
+  }
+  document.getElementById('btn-frt-down').addEventListener('click', () => {
+    if (forcedRecruitThresholdCreate > 4) { forcedRecruitThresholdCreate--; updateFrtDisplay(); }
+  });
+  document.getElementById('btn-frt-up').addEventListener('click', () => {
+    if (forcedRecruitThresholdCreate < 10) { forcedRecruitThresholdCreate++; updateFrtDisplay(); }
+  });
+
+  // Recruit-when-2-traitors toggle (create screen)
+  document.querySelectorAll('#r2t-toggle .setting-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      recruitOnTwoTraitorsCreate = btn.dataset.value === 'on';
+      document.querySelectorAll('#r2t-toggle .setting-toggle-btn').forEach(b => {
+        b.classList.toggle('active', (b.dataset.value === 'on') === recruitOnTwoTraitorsCreate);
+      });
+    });
+  });
 })();
 
 // Theme picker
@@ -807,6 +830,8 @@ document.getElementById('btn-create-game').addEventListener('click', () => {
     shotsPerNight: shotsPerNightCreateTicks / 4,
     enabledNightChallenges: enabledNightChallengesCreate,
     roleAssignmentMode: roleAssignmentModeCreate,
+    forcedRecruitThreshold: forcedRecruitThresholdCreate,
+    recruitOnTwoTraitors: recruitOnTwoTraitorsCreate,
   }, (res) => {
     if (res.error) { errEl.textContent = res.error; return; }
     gameCode = res.code;

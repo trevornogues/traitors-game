@@ -153,6 +153,23 @@
           </div>
 
           <div class="advanced-setting-row">
+            <div class="advanced-setting-label">🩸 Forced Recruit — Min Players</div>
+            <div class="advanced-setting-hint">When only 1 traitor remains, they <em>must</em> recruit (instead of murder) if this many or more players are alive (4–10). Default is 6.</div>
+            <div class="traitor-picker" style="margin-top: 8px;">
+              <button class="btn-stepper" id="btn-frt-down">−</button>
+              <span id="frt-display">6</span>
+              <button class="btn-stepper" id="btn-frt-up">+</button>
+            </div>
+          </div>
+          <div class="advanced-setting-row">
+            <div class="advanced-setting-label">🤝 Recruit When Down to 2 Traitors</div>
+            <div class="advanced-setting-hint">When a traitor is banished and 2+ traitors remain, allow a one-time optional recruitment that night.</div>
+            <div class="setting-toggle-group" id="r2t-toggle" style="margin-top: 8px;">
+              <button class="setting-toggle-btn active" data-value="on">✅ Allowed</button>
+              <button class="setting-toggle-btn" data-value="off">🚫 Disabled</button>
+            </div>
+          </div>
+          <div class="advanced-setting-row">
             <div class="advanced-setting-label">🎲 Night Challenges</div>
             <div class="advanced-setting-hint">Toggle which mini-games can appear at night. At least one must stay enabled.</div>
             <div class="challenge-toggle-grid" id="night-challenges-create" style="margin-top: 8px;"></div>
