@@ -42,6 +42,44 @@ Players are secretly assigned to two teams:
 
 ---
 
+## 💰 Prize Pool + Night Challenges (Mini-Games)
+
+To keep everyone busy on their phones during the night (so traitors can pick secretly without it being obvious), the app runs a **Night Challenge** mini-game during **NIGHT**.
+
+- **Faithful** play a mini-game to build the prize pool (or shots pot).
+- **Traitors** still choose a murder/recruit target, but can optionally answer a “blend in” question on some nights.
+- The night ends the moment all traitors **lock in** (so traitors can intentionally wait to let more progress happen, or lock in quickly to cut it off).
+
+### Prize Pool Modes
+
+The host can choose one of two modes in **Advanced Settings**:
+
+- **💰 Cash (default)**:
+  - Each night can add up to a configurable **Night Challenge Target** (default **$10,000/night**).
+  - Earnings are proportional to group completion (across all faithful).
+  - At the end: **winners split the prize pool**.
+
+- **🥃 Shots (drinking-game mode)**:
+  - The host sets **Shots Per Night** (0.25–5, in 0.25 steps).
+  - Each night awards **0%, 25%, 50%, 75%, or 100%** of that amount based on group completion.
+    - Example (Shots Per Night = 3): 25–49% → **+¾ shot**, 50–74% → **+1½ shots**, 75–99% → **+2¼ shots**, 100% → **+3 shots**
+  - At the end: **losers split the shots** (shown per-loser).
+
+### Mini-Games Included
+
+Night Challenges are randomly selected each night (repeats are allowed):
+
+- **Math Blitz** — 4 arithmetic questions, type answers and lock them in
+- **Odd One Out** — 1 prompt (4 words), each player gets a different set
+- **Color Stroop** — 4 rounds of “tap the ink color”
+- **Higher / Lower** — 4 guesses from a 1–13 sequence
+- **Trivia** — 1 question with 4 choices, each player gets a different question
+- **Memory Flip** — find 4 matching pairs
+- **Don’t Tap the Skull** — up to 4 safe taps; lose immediately if you hit a skull
+- **Timing Challenge** — 1 attempt: stop at a target second (2–10); results show to 2 decimals
+
+---
+
 ## Setup & Running
 
 ### Prerequisites
@@ -55,6 +93,12 @@ npm start
 # or, to keep your Mac awake during the game:
 caffeinate -i npm start
 ```
+
+### Demo mode: limit night challenges
+
+By default, Night Challenges are randomly selected each night.
+
+To limit them in a demo, the **host can toggle them in Advanced Settings** (either while creating the game or in the lobby settings gear panel). **At least one must stay enabled.**
 
 The terminal will print your network URL, e.g.:
 
@@ -79,7 +123,7 @@ Lobby -> Role Reveal -> Night -> Morning Reveal -> Round Table -> Vote -> Vote R
 
 1. **Lobby** — Host creates a game, picks a theme, and sets the number of hidden players. Others join with the 4-letter code.
 2. **Role Reveal** — Each player privately sees their role. Hidden team members see each other's names.
-3. **Night** — The hidden team secretly agrees on a target (unanimous consensus + lock-in required). The good team waits.
+3. **Night** — The hidden team secretly agrees on a target (unanimous consensus + lock-in required). Everyone else plays a Night Challenge mini-game on their phone to build the prize pool.
 4. **Morning Reveal** — Host triggers a dramatic reveal: surviving players appear one by one with a 7-second delay. The eliminated player never walks in. After everyone is accounted for, the result is shown.
 5. **Round Table** — Discuss in person. Host opens voting when ready.
 6. **Voting** — Everyone privately votes to banish someone. Host sees a live vote count.

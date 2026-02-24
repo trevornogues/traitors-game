@@ -445,6 +445,30 @@ html, body {
   z-index: 100;
   flex-shrink: 0;
 }
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.prize-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(212,160,23,0.25);
+  background: rgba(212,160,23,0.10);
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.prize-badge #top-prize-amount {
+  color: var(--gold-light);
+  letter-spacing: 0.02em;
+}
 .game-code-label {
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -875,6 +899,20 @@ body.identity-hidden .role-reveal-card {
   font-style: italic;
 }
 
+/* ── Night challenge toggles (multi-select grid) ─────────────────────────── */
+.challenge-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.challenge-toggle-grid .setting-toggle-btn {
+  width: 100%;
+  flex: none; /* override flex layout when reused in a grid */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── In-lobby settings panel (lives inside the host bar) ────────────────── */
 .lobby-settings-panel-inner {
   background: var(--bg-card);
@@ -1143,6 +1181,241 @@ body.identity-hidden .role-reveal-card {
 }
 .target-card.selected .target-check { background: var(--red); border-color: var(--red); }
 .target-card.recruit-selected .target-check { background: var(--gold); border-color: var(--gold); }
+
+/* ── Night Challenge (mini-games) ───────────────────────────────────────── */
+.night-challenge-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+.night-challenge-progress {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.night-challenge-question {
+  font-family: var(--font-title);
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--gold-light);
+  margin: 10px 0 14px;
+}
+.night-challenge-input {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: var(--radius-md);
+  padding: 14px 14px;
+  color: var(--text);
+  font-size: 1.1rem;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.night-challenge-input:focus {
+  outline: none;
+  border-color: rgba(212,160,23,0.55);
+  box-shadow: 0 0 0 3px rgba(212,160,23,0.18);
+}
+.night-challenge-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+@media (min-width: 420px) {
+  .night-challenge-grid { grid-template-columns: 1fr 1fr; }
+}
+.night-challenge-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+.night-challenge-feedback {
+  text-align: center;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+.night-challenge-stroop-word {
+  font-family: var(--font-title);
+  font-size: 2.4rem;
+  letter-spacing: 0.12em;
+  text-align: center;
+  margin: 6px 0 14px;
+}
+.night-challenge-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.15);
+  flex-shrink: 0;
+}
+.night-challenge-hl-number {
+  font-family: var(--font-title);
+  font-size: 4rem;
+  text-align: center;
+  margin: 6px 0 10px;
+  color: var(--gold-light);
+}
+.night-challenge-hl-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.night-challenge-hl-hint {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 10px;
+  font-style: italic;
+}
+.night-challenge-done {
+  text-align: center;
+  font-family: var(--font-title);
+  font-size: 1.6rem;
+  color: var(--teal);
+  margin: 8px 0 6px;
+}
+.night-challenge-done-sub {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* Traitor overlay for cover question */
+.night-challenge-overlay {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+.night-challenge-overlay-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.night-challenge-overlay-title {
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.night-challenge-overlay-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 12px;
+}
+.night-challenge-overlay-close {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-muted);
+  border-radius: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.night-challenge-overlay-close:hover {
+  border-color: rgba(212,160,23,0.35);
+  color: var(--gold-light);
+}
+
+/* Mini-game tile grids (Memory Flip, Skull Tap) */
+.nc-tile-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.nc-grid-4 { grid-template-columns: repeat(4, 1fr); }
+.nc-grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+.nc-tile {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 120ms, border-color 120ms, background 120ms;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.nc-tile:active { transform: scale(0.98); }
+.nc-tile[disabled] { opacity: 0.7; pointer-events: none; }
+.nc-tile-inner {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.nc-memory.faceup {
+  border-color: rgba(212,160,23,0.35);
+  background: rgba(212,160,23,0.10);
+}
+.nc-memory.matched {
+  border-color: rgba(26,188,156,0.45);
+  background: rgba(26,188,156,0.10);
+}
+
+.nc-skull.good {
+  border-color: rgba(26,188,156,0.45);
+  background: rgba(26,188,156,0.10);
+}
+.nc-skull.bad {
+  border-color: rgba(192,57,43,0.55);
+  background: rgba(192,57,43,0.14);
+}
+
+/* Timing Challenge */
+.nc-timing-target {
+  text-align: center;
+  font-family: var(--font-title);
+  font-size: 1.6rem;
+  color: var(--gold-light);
+  letter-spacing: 0.06em;
+  margin: 8px 0 6px;
+}
+.nc-timing-sub {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+  margin-bottom: 12px;
+}
+.nc-timing-result {
+  margin-top: 12px;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  display: grid;
+  gap: 4px;
+}
+.nc-timing-result.ok {
+  border-color: rgba(26,188,156,0.35);
+  background: rgba(26,188,156,0.08);
+}
+.nc-timing-result.bad {
+  border-color: rgba(192,57,43,0.35);
+  background: rgba(192,57,43,0.08);
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MORNING PHASE

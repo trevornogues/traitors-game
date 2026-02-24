@@ -116,6 +116,38 @@
               <button class="setting-toggle-btn active" data-value="random">🎲 Random Draw</button>
             </div>
           </div>
+          <div class="advanced-setting-row">
+            <div class="advanced-setting-label">🏆 Prize Pool Mode</div>
+            <div class="advanced-setting-hint">Cash = winners split the pot. Shots = losers split the shots.</div>
+            <div class="setting-toggle-group" id="prize-mode-toggle" style="margin-top: 8px;">
+              <button class="setting-toggle-btn active" data-value="CASH">💰 Cash</button>
+              <button class="setting-toggle-btn" data-value="SHOTS">🥃 Shots</button>
+            </div>
+          </div>
+          <div class="advanced-setting-row" id="night-challenge-target-row">
+            <div class="advanced-setting-label">💰 Night Challenge Target</div>
+            <div class="advanced-setting-hint">How much can be added to the prize pool each night (0–1,000,000). Default is $10,000.</div>
+            <div class="traitor-picker" style="margin-top: 8px;">
+              <button class="btn-stepper" id="btn-nct-down">−</button>
+              <span id="nct-display">$10,000</span>
+              <button class="btn-stepper" id="btn-nct-up">+</button>
+            </div>
+          </div>
+          <div class="advanced-setting-row" id="shots-per-night-row" style="display:none">
+            <div class="advanced-setting-label">🥃 Shots Per Night</div>
+            <div class="advanced-setting-hint">In Shots mode, how many shots can be added per night (1–5). Completion awards 0%, 25%, 50%, 75%, or 100% of this amount.</div>
+            <div class="traitor-picker" style="margin-top: 8px;">
+              <button class="btn-stepper" id="btn-spn-down">−</button>
+              <span id="spn-display">1 shot</span>
+              <button class="btn-stepper" id="btn-spn-up">+</button>
+            </div>
+          </div>
+
+          <div class="advanced-setting-row">
+            <div class="advanced-setting-label">🎲 Night Challenges</div>
+            <div class="advanced-setting-hint">Toggle which mini-games can appear at night. At least one must stay enabled.</div>
+            <div class="challenge-toggle-grid" id="night-challenges-create" style="margin-top: 8px;"></div>
+          </div>
         </div>
       </div>
 
@@ -190,6 +222,9 @@
           GAME: <strong id="top-game-code">----</strong>
           <span class="game-code-copy-icon">⎘</span>
         </button>
+        <div class="prize-badge" id="top-prize-badge" title="Prize Pool">
+          💰 <span id="top-prize-amount">$0</span>
+        </div>
       </div>
       <div class="top-bar-right">
         <span id="top-player-name"></span>
@@ -252,7 +287,7 @@
         <div class="rules-section">
           <h3 class="rules-section-title">🔑 Setup</h3>
           <ul class="rules-list">
-            <li>4–20 players join with the same game code.</li>
+            <li>4–30 players join with the same game code.</li>
             <li>The host chooses how many Insiders (usually 2–3).</li>
             <li><strong>Insiders know each other's identities.</strong> Innocents know nothing.</li>
             <li>Everyone else is an Innocent — the majority team.</li>
@@ -262,11 +297,22 @@
         <div class="rules-section">
           <h3 class="rules-section-title">🔄 Each Round</h3>
           <ol class="rules-list rules-list-ordered">
-            <li><strong>Night</strong> — Insiders secretly pick one player to eliminate. All Insiders must agree on the same target and lock in.</li>
+            <li><strong>Night</strong> — Insiders secretly pick a target. All Insiders must agree on the same target and lock in. Meanwhile, everyone else plays a short Night Challenge mini-game on their phone.</li>
             <li><strong>Morning</strong> — Players check who showed up. A missing player was eliminated in the night. Their role is <em>not</em> revealed.</li>
             <li><strong>Discussion</strong> — Everyone debates, accuses, and defends. Insiders must blend in and mislead.</li>
-            <li><strong>Banishment Vote</strong> — All living players vote to banish someone. Most votes loses. The banished player's role <strong>is revealed</strong> after a dramatic countdown.</li>
+            <li><strong>Banishment Vote</strong> — All living players vote to banish someone. Most votes loses. After a dramatic countdown, the banished player's role is revealed <em>unless</em> the host enabled “Hide Identity Reveals” for late game.</li>
           </ol>
+        </div>
+
+        <div class="rules-section">
+          <h3 class="rules-section-title">💰 Night Challenges & Prize Pool</h3>
+          <ul class="rules-list">
+            <li>During <strong>Night</strong>, Innocents play a mini-game to build a shared pot.</li>
+            <li>The host can choose the pot <strong>mode</strong> in Advanced Settings:</li>
+            <li><strong>Cash</strong> — the pot increases each night based on group completion (up to a nightly target). <strong>Winners split</strong> the cash.</li>
+            <li><strong>Shots</strong> — the pot increases in quarter-shot steps based on group completion (0%, 25%, 50%, 75%, 100% of “Shots per Night”). <strong>Losers split</strong> the shots.</li>
+            <li>The host can also choose which Night Challenges are allowed to appear (at least one must stay enabled).</li>
+          </ul>
         </div>
 
         <div class="rules-section">
@@ -281,9 +327,11 @@
         <div class="rules-section">
           <h3 class="rules-section-title">🏁 End Game</h3>
           <ul class="rules-list">
-            <li>When 5 or fewer players remain, the host can trigger an <strong>End Game Vote</strong>.</li>
-            <li>If <em>all</em> players unanimously vote to end the game, it ends immediately — Insiders win if any survive.</li>
-            <li>If even one player votes to keep banishing, the game continues with another round.</li>
+            <li>The <strong>Finale</strong> triggers automatically when the remaining player count reaches the host’s Finale setting (3–6).</li>
+            <li>In the Finale, there are <strong>no more night eliminations</strong>.</li>
+            <li>After each banishment, all remaining players vote: <strong>End the game</strong> or <strong>Keep banishing</strong>.</li>
+            <li>If <em>all</em> players unanimously vote to end, the game ends immediately — Insiders win if any survive.</li>
+            <li>If even one player votes to keep banishing, another banishment round happens and the vote repeats.</li>
             <li><strong>Innocents win</strong> if every Insider is banished.</li>
             <li><strong>Insiders win</strong> if at least one Insider is still alive when the game ends.</li>
           </ul>
@@ -294,7 +342,8 @@
           <ul class="rules-list">
             <li>Innocents: pay attention to who pushes suspicion onto others and who deflects.</li>
             <li>Insiders: act like an Innocent — vote strategically to avoid drawing suspicion.</li>
-            <li>Runoff votes happen if there's a tie. A second tie lets the host break it.</li>
+            <li>Runoff votes happen if there's a tie. If the runoff is also tied, it resolves by the host’s “Persistent Tie Breaker” setting (host choice or random draw).</li>
+            <li>At night, keep your phone private — the game is designed so everyone has something to look at.</li>
           </ul>
         </div>
 

@@ -499,6 +499,9 @@ let countdownInterval = null;
 let recruitedShown = false; // track if we've shown the "you're recruited!" screen
 let lobbySettingsOpen = false; // tracks whether the host's lobby settings panel is open across re-renders
 let nightCoverMode = false; // traitor cover screen — hides traitor controls behind innocent-looking waiting screen
+let nightChallengeLocal = null; // persisted across re-renders during NIGHT
+let nightChallengeLastSent = null; // { correct, total, finished } — last reported to server
+let nightChallengeOverlayDismissed = false; // traitor-only overlay collapse
 let localVoteSelection = null;    // pending vote selection before lock-in
 let localRunoffSelection = null;  // pending runoff vote selection before lock-in
 
@@ -590,6 +593,27 @@ let maxPlayersCreate = 30;         // max players for the game being created
 let endGameThresholdCreate = 5;    // finale player count for the game being created
 let hideRoleThresholdCreate = 4;   // stop revealing banished roles when ≤ this many players remain before banishment
 let tieBreakerModeCreate = 'random'; // 'host' or 'random' — how to break a persistent runoff tie
+let nightChallengeTargetCreate = 10000; // max prize added per night (0–1,000,000)
+let prizeModeCreate = 'CASH'; // CASH | SHOTS
+let shotsPerNightCreateTicks = 4;  // SHOTS mode only, in ticks (1 tick = 1/4 shot). Range 1..20.
+
+// Night challenge rotation (host-configurable)
+const NIGHT_CHALLENGE_OPTIONS = [
+  { id: 'MATH_BLITZ', label: '🧮 Math Blitz' },
+  { id: 'ODD_ONE_OUT', label: '🧠 Odd One Out' },
+  { id: 'COLOR_STROOP', label: '🎨 Color Stroop' },
+  { id: 'HIGHER_LOWER', label: '🃏 Higher / Lower' },
+  { id: 'TRIVIA_ONE', label: '❓ Trivia' },
+  { id: 'MEMORY_FLIP', label: '🧠 Memory Flip' },
+  { id: 'DONT_TAP_SKULL', label: '☠️ Don’t Tap the Skull' },
+  { id: 'TIMING_CHALLENGE', label: '⏱️ Timing Challenge' },
+];
+const NIGHT_CHALLENGE_LABEL_MAP = NIGHT_CHALLENGE_OPTIONS.reduce((acc, o) => {
+  acc[o.id] = o.label;
+  return acc;
+}, {});
+
+let enabledNightChallengesCreate = NIGHT_CHALLENGE_OPTIONS.map(o => o.id); // default: all on
 
 // Apply default theme on page load
 applyTheme('vampire');
@@ -659,6 +683,88 @@ document.getElementById('btn-traitors-up').addEventListener('click', () => {
       });
     });
   });
+
+  // Prize mode toggle
+  function updatePrizeModeUi() {
+    // Conditionally render either cash target row OR shots row
+    const nctRow = document.getElementById('night-challenge-target-row');
+    const spnRow = document.getElementById('shots-per-night-row');
+    if (nctRow) nctRow.style.display = (prizeModeCreate === 'SHOTS') ? 'none' : 'block';
+    if (spnRow) spnRow.style.display = (prizeModeCreate === 'SHOTS') ? 'block' : 'none';
+  }
+  document.querySelectorAll('#prize-mode-toggle .setting-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      prizeModeCreate = btn.dataset.value === 'SHOTS' ? 'SHOTS' : 'CASH';
+      document.querySelectorAll('#prize-mode-toggle .setting-toggle-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.value === prizeModeCreate);
+      });
+      updatePrizeModeUi();
+    });
+  });
+  updatePrizeModeUi();
+
+  // Shots per night stepper
+  function updateSpnDisplay() {
+    const el = document.getElementById('spn-display');
+    if (el) el.textContent = formatShots(shotsPerNightCreateTicks);
+  }
+  document.getElementById('btn-spn-down')?.addEventListener('click', () => {
+    if (shotsPerNightCreateTicks > 1) {
+      shotsPerNightCreateTicks--;
+      updateSpnDisplay();
+    }
+  });
+  document.getElementById('btn-spn-up')?.addEventListener('click', () => {
+    if (shotsPerNightCreateTicks < 20) {
+      shotsPerNightCreateTicks++;
+      updateSpnDisplay();
+    }
+  });
+  updateSpnDisplay();
+
+  // Night challenge target stepper
+  function updateNctDisplay() {
+    const el = document.getElementById('nct-display');
+    if (el) el.textContent = formatMoney(nightChallengeTargetCreate);
+  }
+  document.getElementById('btn-nct-down')?.addEventListener('click', () => {
+    if (nightChallengeTargetCreate > 0) {
+      nightChallengeTargetCreate = Math.max(0, nightChallengeTargetCreate - 1000);
+      updateNctDisplay();
+    }
+  });
+  document.getElementById('btn-nct-up')?.addEventListener('click', () => {
+    if (nightChallengeTargetCreate < 1_000_000) {
+      nightChallengeTargetCreate = Math.min(1_000_000, nightChallengeTargetCreate + 1000);
+      updateNctDisplay();
+    }
+  });
+  updateNctDisplay();
+
+  // Night challenge toggles (multi-select; at least one required)
+  const ncWrap = document.getElementById('night-challenges-create');
+  if (ncWrap) {
+    ncWrap.innerHTML = NIGHT_CHALLENGE_OPTIONS.map(o => `
+      <button type="button" class="setting-toggle-btn ${enabledNightChallengesCreate.includes(o.id) ? 'active' : ''}" data-nc="${o.id}">
+        ${escHtml(o.label)}
+      </button>
+    `).join('');
+
+    ncWrap.querySelectorAll('[data-nc]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.nc;
+        const isOn = enabledNightChallengesCreate.includes(id);
+        if (isOn && enabledNightChallengesCreate.length === 1) {
+          showToast('⚠️ At least one night challenge must stay enabled');
+          return;
+        }
+        enabledNightChallengesCreate = isOn
+          ? enabledNightChallengesCreate.filter(x => x !== id)
+          : [...enabledNightChallengesCreate, id];
+        btn.classList.toggle('active', !isOn);
+      });
+    });
+  }
 })();
 
 // Theme picker
@@ -677,7 +783,19 @@ document.getElementById('btn-create-game').addEventListener('click', () => {
   errEl.textContent = '';
   if (!name) { errEl.textContent = 'Please enter your name.'; return; }
 
-  socket.emit('create_game', { name, numTraitors: traitorCount, theme: selectedTheme, maxPlayers: maxPlayersCreate, endGameThreshold: endGameThresholdCreate, hideRoleThreshold: hideRoleThresholdCreate, tieBreakerMode: tieBreakerModeCreate }, (res) => {
+  socket.emit('create_game', {
+    name,
+    numTraitors: traitorCount,
+    theme: selectedTheme,
+    maxPlayers: maxPlayersCreate,
+    endGameThreshold: endGameThresholdCreate,
+    hideRoleThreshold: hideRoleThresholdCreate,
+    tieBreakerMode: tieBreakerModeCreate,
+    nightChallengeTarget: nightChallengeTargetCreate,
+    prizeMode: prizeModeCreate,
+    shotsPerNight: shotsPerNightCreateTicks / 4,
+    enabledNightChallenges: enabledNightChallengesCreate,
+  }, (res) => {
     if (res.error) { errEl.textContent = res.error; return; }
     gameCode = res.code;
     myName = name;
@@ -806,6 +924,18 @@ socket.on('game_state', (state) => {
   document.getElementById('top-game-code').textContent = state.code || '----';
   document.getElementById('top-player-name').textContent = state.myName || '';
   updateRoleBadge(state.myRole, state.isAlive, state.isSpectator);
+  // Prize pool
+  const prizeAmountEl = document.getElementById('top-prize-amount');
+  const prizeBadgeEl = document.getElementById('top-prize-badge');
+  if (prizeAmountEl) {
+    const base = formatPrizeTotal(state.prizePool || 0, state.prizeMode || 'CASH');
+    const nightEarn = state.phase === 'NIGHT' && state.nightChallenge ? (state.nightChallenge.earnedSoFar || 0) : 0;
+    const inc = nightEarn > 0 ? ` (+${formatPrizeIncrement(nightEarn, state.prizeMode || 'CASH')})` : '';
+    prizeAmountEl.textContent = `${base}${inc}`;
+  }
+  if (prizeBadgeEl) {
+    prizeBadgeEl.style.display = (state.prizePool !== undefined) ? 'inline-flex' : 'none';
+  }
   // Keep copy button always reflecting the current code
   const copyBtn = document.getElementById('game-code-copy-btn');
   if (copyBtn) copyBtn.dataset.code = state.code || '';
@@ -920,11 +1050,23 @@ function renderLobby(state, content, hostControls) {
     let lobbyMaxPlayers = maxPlayers;
     let lobbyEgt = state.endGameThreshold || 5;
     let lobbyHrt = state.hideRoleThreshold || 4;
+    let lobbyNct = state.nightChallengeTarget || 10000;
+    let lobbyPrizeMode = state.prizeMode || 'CASH';
+    let lobbySpnTicks = state.shotsPerNightTicks || Math.max(1, Math.min(20, Math.round((state.shotsPerNight || 1) * 4)));
+    const lobbyNightChallengesAll = (Array.isArray(state.nightChallengesAll) && state.nightChallengesAll.length)
+      ? state.nightChallengesAll
+      : NIGHT_CHALLENGE_OPTIONS.map(o => o.id);
+    let lobbyEnabledNightChallenges = (Array.isArray(state.enabledNightChallenges) && state.enabledNightChallenges.length)
+      ? [...state.enabledNightChallenges]
+      : [...lobbyNightChallengesAll];
 
     const canStart = players.length >= 4;
     const threshold = state.endGameThreshold || 5;
     const hideAt    = state.hideRoleThreshold || 4;
     const tieMode   = state.tieBreakerMode || 'random';
+    const nct       = state.nightChallengeTarget || 10000;
+    const pm        = state.prizeMode || 'CASH';
+    const spnTicks  = state.shotsPerNightTicks || Math.max(1, Math.min(20, Math.round((state.shotsPerNight || 1) * 4)));
 
     hostControls.innerHTML = `
       <!-- Settings panel — visibility restored from lobbySettingsOpen flag -->
@@ -964,6 +1106,43 @@ function renderLobby(state, content, hostControls) {
             <button class="setting-toggle-btn ${tieMode === 'random' ? 'active' : ''}" data-value="random">🎲 Random Draw</button>
           </div>
         </div>
+        <div class="advanced-setting-row" id="lobby-nct-row" style="display:${pm === 'SHOTS' ? 'none' : 'block'}">
+          <div class="advanced-setting-label">💰 Night Challenge Target</div>
+          <div class="advanced-setting-hint">How much can be added to the prize pool each night (0–1,000,000). Currently: <span id="lobby-nct-hint">${formatMoney(lobbyNct)}</span>.</div>
+          <div class="traitor-picker" style="margin-top:8px">
+            <button class="btn-stepper" id="btn-lobby-nct-down">−</button>
+            <span id="lobby-nct-display">${formatMoney(lobbyNct)}</span>
+            <button class="btn-stepper" id="btn-lobby-nct-up">+</button>
+          </div>
+        </div>
+        <div class="advanced-setting-row">
+          <div class="advanced-setting-label">🏆 Prize Pool Mode</div>
+          <div class="advanced-setting-hint">Cash = winners split. Shots = losers split.</div>
+          <div class="setting-toggle-group" id="lobby-prize-mode-toggle" style="margin-top:8px">
+            <button class="setting-toggle-btn ${pm === 'CASH' ? 'active' : ''}" data-value="CASH">💰 Cash</button>
+            <button class="setting-toggle-btn ${pm === 'SHOTS' ? 'active' : ''}" data-value="SHOTS">🥃 Shots</button>
+          </div>
+        </div>
+        <div class="advanced-setting-row" id="lobby-spn-row" style="display:${pm === 'SHOTS' ? 'block' : 'none'}">
+          <div class="advanced-setting-label">🥃 Shots Per Night</div>
+          <div class="advanced-setting-hint">In Shots mode, how many shots can be added per night (0.25–5, in 0.25 steps). Currently: <span id="lobby-spn-hint">${formatShots(spnTicks)}</span>.</div>
+          <div class="traitor-picker" style="margin-top:8px">
+            <button class="btn-stepper" id="btn-lobby-spn-down">−</button>
+            <span id="lobby-spn-display">${formatShots(spnTicks)}</span>
+            <button class="btn-stepper" id="btn-lobby-spn-up">+</button>
+          </div>
+        </div>
+        <div class="advanced-setting-row">
+          <div class="advanced-setting-label">🎲 Night Challenges</div>
+          <div class="advanced-setting-hint">Toggle which mini-games can appear at night. At least one must stay enabled.</div>
+          <div class="challenge-toggle-grid" id="lobby-night-challenges" style="margin-top:8px">
+            ${lobbyNightChallengesAll.map(id => `
+              <button class="setting-toggle-btn ${lobbyEnabledNightChallenges.includes(id) ? 'active' : ''}" data-nc="${id}">
+                ${escHtml(NIGHT_CHALLENGE_LABEL_MAP[id] || id)}
+              </button>
+            `).join('')}
+          </div>
+        </div>
       </div>
 
       <!-- Start button row + settings gear -->
@@ -976,7 +1155,7 @@ function renderLobby(state, content, hostControls) {
         </button>
       </div>
       ${!canStart ? '<p class="text-center text-muted" style="font-size:0.75rem;margin-top:4px">Need at least 4 players</p>' : ''}
-      <p class="lobby-settings-summary">${state.numTraitors !== undefined ? `${state.numTraitors} ${currentTheme.traitorName}${state.numTraitors !== 1 ? 's' : ''} &nbsp;·&nbsp; 🔥 Finale ${threshold} &nbsp;·&nbsp; 🎭 Hide @${hideAt} &nbsp;·&nbsp; ⚖️ ${tieMode === 'random' ? 'Random' : 'Host'} pick` : ''}</p>
+      <p class="lobby-settings-summary">${state.numTraitors !== undefined ? `${state.numTraitors} ${currentTheme.traitorName}${state.numTraitors !== 1 ? 's' : ''} &nbsp;·&nbsp; 🏆 ${pm === 'SHOTS' ? 'Shots' : 'Cash'} &nbsp;·&nbsp; ${pm === 'SHOTS' ? `🥃 up to ${formatShots(spnTicks)} / night (25% steps)` : `💰 ${formatMoney(nct)}/night`} &nbsp;·&nbsp; 🔥 Finale ${threshold} &nbsp;·&nbsp; 🎭 Hide @${hideAt} &nbsp;·&nbsp; ⚖️ ${tieMode === 'random' ? 'Random' : 'Host'} pick` : ''}</p>
     `;
 
     // Settings gear toggle — uses module-level flag so re-renders keep the panel open
@@ -1086,6 +1265,102 @@ function renderLobby(state, content, hostControls) {
         });
       });
     });
+
+    // Night challenge target stepper
+    const nctDisplay = document.getElementById('lobby-nct-display');
+    const nctHintEl  = document.getElementById('lobby-nct-hint');
+    function updateLobbyNctDisplay() {
+      const txt = formatMoney(lobbyNct);
+      nctDisplay.textContent = txt;
+      if (nctHintEl) nctHintEl.textContent = txt;
+    }
+    function updateLobbyPrizeModeUi() {
+      // Conditionally render either NCT row OR Shots row
+      const nctRow = document.getElementById('lobby-nct-row');
+      const spnRow = document.getElementById('lobby-spn-row');
+      if (nctRow) nctRow.style.display = (lobbyPrizeMode === 'SHOTS') ? 'none' : 'block';
+      if (spnRow) spnRow.style.display = (lobbyPrizeMode === 'SHOTS') ? 'block' : 'none';
+    }
+    document.getElementById('btn-lobby-nct-down')?.addEventListener('click', () => {
+      if (lobbyNct > 0) {
+        lobbyNct = Math.max(0, lobbyNct - 1000);
+        updateLobbyNctDisplay();
+        socket.emit('update_lobby_settings', { nightChallengeTarget: lobbyNct }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+    document.getElementById('btn-lobby-nct-up')?.addEventListener('click', () => {
+      if (lobbyNct < 1_000_000) {
+        lobbyNct = Math.min(1_000_000, lobbyNct + 1000);
+        updateLobbyNctDisplay();
+        socket.emit('update_lobby_settings', { nightChallengeTarget: lobbyNct }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+
+    // Prize mode toggle (lobby)
+    document.querySelectorAll('#lobby-prize-mode-toggle .setting-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.value === 'SHOTS' ? 'SHOTS' : 'CASH';
+        lobbyPrizeMode = val;
+        document.querySelectorAll('#lobby-prize-mode-toggle .setting-toggle-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.value === val);
+        });
+        updateLobbyPrizeModeUi();
+        socket.emit('update_lobby_settings', { prizeMode: val }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      });
+    });
+    updateLobbyPrizeModeUi();
+
+    // Shots per night stepper (lobby)
+    const spnDisplay = document.getElementById('lobby-spn-display');
+    const spnHintEl  = document.getElementById('lobby-spn-hint');
+    function updateLobbySpnDisplay() {
+      const txt = formatShots(lobbySpnTicks);
+      if (spnDisplay) spnDisplay.textContent = txt;
+      if (spnHintEl) spnHintEl.textContent = txt;
+    }
+    document.getElementById('btn-lobby-spn-down')?.addEventListener('click', () => {
+      if (lobbySpnTicks > 1) {
+        lobbySpnTicks--;
+        updateLobbySpnDisplay();
+        socket.emit('update_lobby_settings', { shotsPerNight: lobbySpnTicks / 4 }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+    document.getElementById('btn-lobby-spn-up')?.addEventListener('click', () => {
+      if (lobbySpnTicks < 20) {
+        lobbySpnTicks++;
+        updateLobbySpnDisplay();
+        socket.emit('update_lobby_settings', { shotsPerNight: lobbySpnTicks / 4 }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      }
+    });
+
+    // Night challenge toggles (lobby)
+    document.querySelectorAll('#lobby-night-challenges [data-nc]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.nc;
+        const isOn = lobbyEnabledNightChallenges.includes(id);
+        if (isOn && lobbyEnabledNightChallenges.length === 1) {
+          showToast('⚠️ At least one night challenge must stay enabled');
+          return;
+        }
+        lobbyEnabledNightChallenges = isOn
+          ? lobbyEnabledNightChallenges.filter(x => x !== id)
+          : [...lobbyEnabledNightChallenges, id];
+        btn.classList.toggle('active', !isOn);
+        socket.emit('update_lobby_settings', { enabledNightChallenges: lobbyEnabledNightChallenges }, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      });
+    });
   } else {
     hostControls.innerHTML = '';
     document.getElementById('host-bar').classList.add('hidden');
@@ -1164,6 +1439,13 @@ function renderNight(state, content, hostControls, phaseChanged) {
   const nightMode = state.nightMode;
   const isMurder = nightMode === 'MURDER';
   const isRecruit = nightMode === 'RECRUIT' || nightMode === 'FORCED_RECRUIT';
+  const canPlayChallenge = !!state.nightChallenge && !!state.nightChallenge.type && state.isAlive && !state.isSpectator;
+
+  if (phaseChanged) {
+    nightChallengeOverlayDismissed = false;
+    nightChallengeLastSent = null;
+  }
+  if (canPlayChallenge) ensureNightChallengeLocal(state);
 
   // Check if this player was just recruited (they were faithful, now traitor, and it's night)
   // We track this with a flag since recruitment happens during NIGHT phase
@@ -1188,8 +1470,12 @@ function renderNight(state, content, hostControls, phaseChanged) {
   `;
 
   if (!isTraitor) {
-    // ── Faithful waiting screen ─────────────────────────────────────────────
-    content.innerHTML = waitingScreenHtml;
+    // ── Faithful night challenge (or fallback waiting screen) ──────────────
+    if (canPlayChallenge) {
+      renderNightChallenge(state, content, { showCoverToggle: false });
+    } else {
+      content.innerHTML = waitingScreenHtml;
+    }
     if (state.isHost) {
       hostControls.innerHTML = `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Waiting for ${currentTheme.traitorName}s to make their decision...</p>`;
     }
@@ -1198,12 +1484,16 @@ function renderNight(state, content, hostControls, phaseChanged) {
 
   // ── Traitor in cover mode: show the innocent-looking waiting screen ─────────
   if (nightCoverMode) {
-    content.innerHTML = `
-      ${waitingScreenHtml}
-      <div class="night-cover-toggle">
-        <button id="btn-toggle-cover" class="night-cover-reveal-btn">🗡️ Show my controls</button>
-      </div>
-    `;
+    if (canPlayChallenge) {
+      renderNightChallenge(state, content, { showCoverToggle: true });
+    } else {
+      content.innerHTML = `
+        ${waitingScreenHtml}
+        <div class="night-cover-toggle">
+          <button id="btn-toggle-cover" class="night-cover-reveal-btn">🗡️ Show my controls</button>
+        </div>
+      `;
+    }
     document.getElementById('btn-toggle-cover')?.addEventListener('click', () => {
       nightCoverMode = false;
       renderNight(state, content, hostControls, false);
@@ -1242,6 +1532,11 @@ function renderNight(state, content, hostControls, phaseChanged) {
   const mySelection = state.mySelection;
   const myLockedIn = state.myLockedIn;
   const allSame = state.allSameTarget;
+  const earnedSoFar = state.nightChallenge ? (state.nightChallenge.earnedSoFar || 0) : 0;
+  const targetTonight = state.nightChallenge ? (state.nightChallenge.target || 0) : 0;
+  const challengeName = (state.nightChallenge && state.nightChallenge.type)
+    ? (NIGHT_CHALLENGE_LABELS?.[state.nightChallenge.type] || state.nightChallenge.type)
+    : null;
 
   const targetsHtml = targets.map(t => `
     <div class="target-card ${mySelection === t.id ? (isMurder ? 'selected' : 'recruit-selected') : ''}"
@@ -1281,10 +1576,53 @@ function renderNight(state, content, hostControls, phaseChanged) {
 
     ${modeChoiceHtml}
 
+    ${state.nightChallenge ? `
+      <div class="info-box gold mb-16" style="text-align:center">
+        <div style="color:var(--gold);font-weight:900;letter-spacing:0.08em;text-transform:uppercase;font-size:0.7rem;margin-bottom:6px">
+          ${state.prizeMode === 'SHOTS' ? '🥃 Night Challenge' : '💰 Night Challenge'}
+        </div>
+        ${challengeName ? `
+          <div style="color:var(--text-dim);font-size:0.9rem;margin-bottom:6px">
+            Faithful are playing: <strong style="color:var(--gold-light)">${escHtml(challengeName)}</strong>
+          </div>
+        ` : ''}
+        <div style="color:var(--text-dim);font-size:0.85rem">
+          Earned so far: <strong style="color:var(--gold-light)">${formatPrizeIncrement(earnedSoFar, state.prizeMode || 'CASH')}</strong>
+          ${targetTonight ? (
+            (state.prizeMode === 'SHOTS')
+              ? `<span style="color:var(--text-muted)"> / ${formatShots(targetTonight)}</span>`
+              : `<span style="color:var(--text-muted)"> / ${formatMoney(targetTonight)}</span>`
+          ) : ''}
+        </div>
+        ${(state.nightChallenge.type === 'ODD_ONE_OUT' || state.nightChallenge.type === 'TRIVIA_ONE') ? `
+          <div style="color:var(--text-muted);font-size:0.78rem;margin-top:6px;font-style:italic">
+            Optional cover question available below.
+          </div>
+        ` : `
+          <div style="color:var(--text-muted);font-size:0.78rem;margin-top:6px;font-style:italic">
+            Faithful are busy — lock in when you're ready to end the challenge.
+          </div>
+        `}
+      </div>
+    ` : ''}
+
     <div class="info-box mb-16">
       <div class="section-label mb-8">${currentTheme.fellowLabel}</div>
       ${traitorRows}
     </div>
+
+    ${(state.nightChallenge && (state.nightChallenge.type === 'ODD_ONE_OUT' || state.nightChallenge.type === 'TRIVIA_ONE') && !nightChallengeOverlayDismissed) ? `
+      <div class="night-challenge-overlay mb-16" id="night-challenge-overlay">
+        <div class="night-challenge-overlay-top">
+          <div class="night-challenge-overlay-title">🎭 Blend In Challenge</div>
+          <button class="night-challenge-overlay-close" id="btn-dismiss-overlay" aria-label="Hide">✕</button>
+        </div>
+        <div class="night-challenge-overlay-subtitle">Doesn't affect the prize pool — just cover.</div>
+        <div id="night-challenge-overlay-body"></div>
+      </div>
+    ` : (state.nightChallenge && (state.nightChallenge.type === 'ODD_ONE_OUT' || state.nightChallenge.type === 'TRIVIA_ONE')) ? `
+      <button class="btn btn-secondary mb-16" id="btn-show-overlay">🎭 Show Blend In Challenge</button>
+    ` : ''}
 
     <div class="section-label">${actionTitle}</div>
     ${allSame && mySelection ? `<p style="color:var(--gold);font-size:0.8rem;margin-bottom:8px;text-align:center">All agreed! Lock in your vote ↓</p>` : ''}
@@ -1292,19 +1630,22 @@ function renderNight(state, content, hostControls, phaseChanged) {
       ${targetsHtml}
     </div>
 
-    ${allSame && myLockedIn ? `
+    ${myLockedIn ? `
       <div class="info-box teal text-center">
         <p style="color:var(--teal);font-weight:700">✓ Locked In</p>
-        <p style="color:var(--text-muted);font-size:0.85rem">Waiting for others to lock in...</p>
+        <p style="color:var(--text-muted);font-size:0.85rem">
+          ${allSame ? 'Waiting for others to lock in...' : 'Someone changed their vote — unlock if you need to adjust.'}
+        </p>
+        <button class="btn btn-ghost" id="btn-unlock-in" style="margin-top:10px">🔓 Unlock</button>
       </div>
-    ` : allSame && !myLockedIn ? `
+    ` : allSame ? `
       <button class="btn btn-teal btn-large" id="btn-lock-in">🔒 Lock In Vote</button>
-    ` : !myLockedIn ? `
+    ` : `
       <button class="btn btn-large" id="btn-lock-in" disabled
         style="background:var(--bg-card2);color:var(--text-muted);border:1px solid var(--border)">
         🔒 Lock In (all must agree first)
       </button>
-    ` : ''}
+    `}
   `;
 
   // Cover screen toggle
@@ -1312,6 +1653,20 @@ function renderNight(state, content, hostControls, phaseChanged) {
     nightCoverMode = true;
     renderNight(state, content, hostControls, false);
   });
+
+  // Blend-in overlay
+  document.getElementById('btn-dismiss-overlay')?.addEventListener('click', () => {
+    nightChallengeOverlayDismissed = true;
+    renderNight(state, content, hostControls, false);
+  });
+  document.getElementById('btn-show-overlay')?.addEventListener('click', () => {
+    nightChallengeOverlayDismissed = false;
+    renderNight(state, content, hostControls, false);
+  });
+  const overlayBody = document.getElementById('night-challenge-overlay-body');
+  if (overlayBody && canPlayChallenge) {
+    renderNightChallenge(state, overlayBody, { isOverlay: true, showCoverToggle: false });
+  }
 
   // Target selection
   document.querySelectorAll('.target-card[data-id]').forEach(card => {
@@ -1326,6 +1681,13 @@ function renderNight(state, content, hostControls, phaseChanged) {
   // Lock in
   document.getElementById('btn-lock-in')?.addEventListener('click', () => {
     socket.emit('traitor_lock_in', {}, (res) => {
+      if (res.error) showToast('⚠️ ' + res.error);
+    });
+  });
+
+  // Unlock
+  document.getElementById('btn-unlock-in')?.addEventListener('click', () => {
+    socket.emit('traitor_unlock', {}, (res) => {
       if (res.error) showToast('⚠️ ' + res.error);
     });
   });
@@ -1362,6 +1724,20 @@ function renderMorning(state, content, hostControls) {
           ${currentTheme.morningPendingSubtitle}
         </p>
       </div>
+      ${state.lastNightChallengeResult ? `
+        <div class="info-box gold mb-16" style="text-align:center">
+          <div style="color:var(--gold);font-weight:900;letter-spacing:0.08em;text-transform:uppercase;font-size:0.7rem;margin-bottom:6px">
+            ${state.prizeMode === 'SHOTS' ? '🥃 Shots Update' : '💰 Prize Pool Update'}
+          </div>
+          <div style="color:var(--text-dim);font-size:0.9rem">
+            Added <strong style="color:var(--gold-light)">+${formatPrizeIncrement(state.lastNightChallengeResult.earned || 0, state.prizeMode || 'CASH')}</strong>
+            ${(state.prizeMode !== 'SHOTS' && state.lastNightChallengeResult.target) ? `<span style="color:var(--text-muted)"> (of ${formatMoney(state.lastNightChallengeResult.target)})</span>` : ''}
+          </div>
+          <div style="color:var(--text-muted);font-size:0.82rem;margin-top:6px">
+            Total: <strong style="color:var(--gold-light)">${formatPrizeTotal(state.prizePool || 0, state.prizeMode || 'CASH')}</strong>
+          </div>
+        </div>
+      ` : ''}
     `;
     if (state.isHost) {
       hostControls.innerHTML = `
@@ -1594,6 +1970,22 @@ function renderVoting(state, content, hostControls) {
 
   if (!state.isAlive) {
     renderObserverVotingView(state, content, { eyebrow: currentTheme.voteEyebrow, title: 'Banishment Vote' });
+
+    // Host can still run the show even if they've been eliminated.
+    if (state.isHost) {
+      hostControls.innerHTML = state.canRevealVotes
+        ? `<button class="btn btn-primary btn-large" id="btn-reveal-votes">📜 Reveal Votes</button>`
+        : `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Waiting for all votes (${state.voteCount}/${state.totalVoters})...</p>`;
+
+      document.getElementById('btn-reveal-votes')?.addEventListener('click', () => {
+        socket.emit('reveal_votes', {}, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      });
+    } else {
+      // Ensure we don't show stale host buttons from a previous phase.
+      hostControls.innerHTML = '';
+    }
     return;
   }
 
@@ -1792,6 +2184,21 @@ function renderRunoffVoting(state, content, hostControls) {
       title: 'Runoff Vote',
       subtitle: 'The vote was tied — a runoff is underway.',
     });
+
+    // Host controls still apply even if host is eliminated.
+    if (state.isHost) {
+      hostControls.innerHTML = state.canRevealVotes
+        ? `<button class="btn btn-primary btn-large" id="btn-reveal-runoff-votes">📜 Reveal Votes</button>`
+        : `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Waiting for all votes (${state.voteCount}/${state.totalVoters})...</p>`;
+
+      document.getElementById('btn-reveal-runoff-votes')?.addEventListener('click', () => {
+        socket.emit('reveal_runoff_votes', {}, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      });
+    } else {
+      hostControls.innerHTML = '';
+    }
     return;
   }
 
@@ -1983,6 +2390,21 @@ function renderEndGameVote(state, content, hostControls) {
       title: 'Do You End It?',
       subtitle: 'A unanimous vote to end wins — or continue banishing.',
     });
+
+    // Host can still reveal votes even if eliminated.
+    if (state.isHost) {
+      hostControls.innerHTML = state.canRevealEndGameVotes
+        ? `<button class="btn btn-primary btn-large" id="btn-reveal-end-votes">📜 Reveal Votes</button>`
+        : `<p class="text-center text-muted" style="font-size:0.8rem;padding:8px">Waiting for all votes (${state.voteCount}/${state.totalVoters})...</p>`;
+
+      document.getElementById('btn-reveal-end-votes')?.addEventListener('click', () => {
+        socket.emit('reveal_end_game_votes', {}, (res) => {
+          if (res.error) showToast('⚠️ ' + res.error);
+        });
+      });
+    } else {
+      hostControls.innerHTML = '';
+    }
     return;
   }
 
@@ -2178,6 +2600,21 @@ function renderGameOver(state, content, hostControls) {
       </p>
     </div>
 
+    <div class="info-box gold mb-16" style="text-align:center">
+      <div style="color:var(--gold);font-weight:900;letter-spacing:0.08em;text-transform:uppercase;font-size:0.7rem;margin-bottom:6px">
+        ${state.prizeMode === 'SHOTS' ? '🥃 Shots Pot' : '💰 Prize Pool'}
+      </div>
+      <div style="color:var(--text-dim);font-size:0.95rem">
+        Total: <strong style="color:var(--gold-light)">${formatPrizeTotal(state.prizePool || 0, state.prizeMode || 'CASH')}</strong>
+      </div>
+      <div style="color:var(--text-muted);font-size:0.85rem;margin-top:6px">
+        ${(state.prizeMode === 'SHOTS')
+          ? `Each loser drinks: <strong style="color:var(--gold-light)">${formatShots(state.payoutShare || state.winningShare || 0)}</strong>`
+          : `Each winner receives: <strong style="color:var(--gold-light)">${formatMoney(state.payoutShare || state.winningShare || 0)}</strong>`
+        }
+      </div>
+    </div>
+
     <div class="section-label mb-12">Final Roles</div>
     <div>${allRoles.map(roleCardHtml).join('')}</div>
   `;
@@ -2294,4 +2731,774 @@ function escHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function formatMoney(n) {
+  const num = Math.max(0, Math.floor(Number(n) || 0));
+  return '$' + num.toLocaleString();
+}
+
+function formatShots(n) {
+  // SHOTS are stored in "ticks": 1 tick = 1/4 shot
+  const ticks = Math.max(0, Math.round(Number(n) || 0));
+  const whole = Math.floor(ticks / 4);
+  const frac = ticks % 4; // 0..3
+  const fracSym = frac === 1 ? '¼' : frac === 2 ? '½' : frac === 3 ? '¾' : '';
+  const value = ticks / 4;
+
+  let amountStr = '';
+  if (whole === 0 && fracSym) amountStr = fracSym;
+  else if (whole > 0 && fracSym) amountStr = `${whole}${fracSym}`;
+  else amountStr = `${whole}`;
+
+  const isSingular = Math.abs(value - 1) < 1e-9;
+  return `${amountStr} shot${isSingular ? '' : 's'}`;
+}
+
+function formatPrizeTotal(total, prizeMode) {
+  return (prizeMode === 'SHOTS') ? formatShots(total) : formatMoney(total);
+}
+
+function formatPrizeIncrement(inc, prizeMode) {
+  return (prizeMode === 'SHOTS') ? formatShots(inc) : formatMoney(inc);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NIGHT CHALLENGES (mini-games)
+// ─────────────────────────────────────────────────────────────────────────────
+const NIGHT_CHALLENGE_LABELS = {
+  MATH_BLITZ: '🧮 Math Blitz',
+  ODD_ONE_OUT: '🧠 Odd One Out',
+  COLOR_STROOP: '🎨 Color Stroop',
+  HIGHER_LOWER: '🃏 Higher / Lower',
+  TRIVIA_ONE: '❓ Trivia',
+  MEMORY_FLIP: '🧠 Memory Flip',
+  DONT_TAP_SKULL: '☠️ Don’t Tap the Skull',
+  TIMING_CHALLENGE: '⏱️ Timing Challenge',
+};
+
+const STROOP_COLOR_HEX = {
+  RED: '#e74c3c',
+  BLUE: '#3498db',
+  GREEN: '#2ecc71',
+  YELLOW: '#f1c40f',
+  PURPLE: '#9b59b6',
+  ORANGE: '#e67e22',
+};
+
+const ODD_ONE_OUT_POOL = [
+  { group: ['fork', 'spoon', 'knife'], odd: 'pillow' },
+  { group: ['cat', 'dog', 'hamster'], odd: 'teapot' },
+  { group: ['apple', 'banana', 'orange'], odd: 'socks' },
+  { group: ['winter', 'spring', 'summer'], odd: 'microwave' },
+  { group: ['piano', 'guitar', 'drums'], odd: 'taxi' },
+  { group: ['Paris', 'Rome', 'Berlin'], odd: 'carrot' },
+  { group: ['red', 'blue', 'green'], odd: 'triangle' },
+  { group: ['triangle', 'square', 'circle'], odd: 'sandwich' },
+  { group: ['shark', 'whale', 'dolphin'], odd: 'candle' },
+  { group: ['coffee', 'tea', 'hot chocolate'], odd: 'helmet' },
+  { group: ['Monday', 'Tuesday', 'Wednesday'], odd: 'pepper' },
+  { group: ['chair', 'table', 'couch'], odd: 'rain' },
+  { group: ['pencil', 'pen', 'marker'], odd: 'snowman' },
+  { group: ['train', 'bus', 'subway'], odd: 'bicycle pump' },
+  { group: ['soccer', 'basketball', 'tennis'], odd: 'toaster' },
+  { group: ['bread', 'butter', 'jam'], odd: 'calendar' },
+  { group: ['sun', 'moon', 'stars'], odd: 'burrito' },
+  { group: ['october', 'november', 'december'], odd: 'shampoo' },
+  { group: ['doctor', 'nurse', 'surgeon'], odd: 'snowboard' },
+  { group: ['lion', 'tiger', 'leopard'], odd: 'wallet' },
+];
+
+const TRIVIA_POOL = [
+  { q: 'What is the capital of Australia?', choices: ['Sydney', 'Canberra', 'Melbourne', 'Perth'], a: 1 },
+  { q: 'How many minutes are in an hour?', choices: ['50', '60', '70', '80'], a: 1 },
+  { q: 'Which planet is known as the Red Planet?', choices: ['Mars', 'Venus', 'Jupiter', 'Mercury'], a: 0 },
+  { q: 'What is H2O commonly called?', choices: ['Salt', 'Water', 'Oxygen', 'Hydrogen'], a: 1 },
+  { q: 'How many continents are there?', choices: ['5', '6', '7', '8'], a: 2 },
+  { q: 'Which animal is the largest mammal?', choices: ['Elephant', 'Blue whale', 'Giraffe', 'Hippo'], a: 1 },
+  { q: 'What is the hardest natural substance?', choices: ['Gold', 'Diamond', 'Iron', 'Quartz'], a: 1 },
+  { q: 'What do bees make?', choices: ['Milk', 'Honey', 'Butter', 'Vinegar'], a: 1 },
+  { q: 'Which ocean is the largest?', choices: ['Atlantic', 'Indian', 'Arctic', 'Pacific'], a: 3 },
+  { q: 'How many sides does a hexagon have?', choices: ['5', '6', '7', '8'], a: 1 },
+  { q: 'What is the main language spoken in Brazil?', choices: ['Spanish', 'Portuguese', 'French', 'Italian'], a: 1 },
+  { q: 'Which instrument has 88 keys?', choices: ['Violin', 'Piano', 'Flute', 'Drums'], a: 1 },
+];
+
+function hashStringToUint(str) {
+  // Simple 32-bit hash (deterministic)
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function mulberry32(a) {
+  return function () {
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function createSeededRng(seed, salt) {
+  const s = (Number(seed) >>> 0) ^ hashStringToUint(String(salt || ''));
+  return mulberry32(s >>> 0);
+}
+
+function randInt(rng, min, maxInclusive) {
+  return Math.floor(rng() * (maxInclusive - min + 1)) + min;
+}
+
+function shuffleInPlace(rng, arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function ensureNightChallengeLocal(state) {
+  const ch = state.nightChallenge;
+  if (!ch || !ch.type) return;
+  const key = `${ch.type}:${ch.seed}:${ch.tasksPerPlayer}`;
+  if (nightChallengeLocal && nightChallengeLocal.key === key) return;
+
+  const rng = createSeededRng(ch.seed || 0, state.myId || myId || 'player');
+  nightChallengeLocal = {
+    key,
+    type: ch.type,
+    seed: ch.seed,
+    tasks: ch.tasksPerPlayer || 10,
+    idx: 0,
+    correct: 0,
+    finished: false,
+    inputValue: '',
+    lastFeedback: '',
+  };
+
+  if (ch.type === 'MATH_BLITZ') {
+    nightChallengeLocal.questions = Array.from({ length: nightChallengeLocal.tasks }, () => genMathQuestion(rng));
+  } else if (ch.type === 'COLOR_STROOP') {
+    nightChallengeLocal.rounds = Array.from({ length: nightChallengeLocal.tasks }, () => genStroopRound(rng));
+  } else if (ch.type === 'HIGHER_LOWER') {
+    nightChallengeLocal.sequence = genHigherLowerSequence(rng, nightChallengeLocal.tasks + 1);
+  } else if (ch.type === 'ODD_ONE_OUT') {
+    nightChallengeLocal.odd = genOddOneOut(rng);
+  } else if (ch.type === 'TRIVIA_ONE') {
+    nightChallengeLocal.trivia = genTrivia(rng);
+  } else if (ch.type === 'MEMORY_FLIP') {
+    nightChallengeLocal.memory = genMemoryFlip(rng, nightChallengeLocal.tasks); // tasks = pairs
+    nightChallengeLocal.memoryFirst = null; // first flipped card index
+    nightChallengeLocal.memoryLock = false; // prevent taps during mismatch flip-back
+  } else if (ch.type === 'DONT_TAP_SKULL') {
+    nightChallengeLocal.skull = genSkullTap(rng);
+  } else if (ch.type === 'TIMING_CHALLENGE') {
+    nightChallengeLocal.timing = genTimingChallenge(rng, nightChallengeLocal.tasks);
+    nightChallengeLocal.timingRunning = false;
+    nightChallengeLocal.timingStartMs = null;
+    nightChallengeLocal.timingLast = null; // { target, elapsed, diff, ok }
+  }
+}
+
+function genMathQuestion(rng) {
+  const ops = ['+', '-', '×', '÷'];
+  const op = ops[randInt(rng, 0, ops.length - 1)];
+  if (op === '÷') {
+    const b = randInt(rng, 2, 12);
+    const a = b * randInt(rng, 2, 12);
+    return { text: `${a} ÷ ${b} = ?`, answer: a / b };
+  }
+  if (op === '×') {
+    const a = randInt(rng, 2, 15);
+    const b = randInt(rng, 2, 15);
+    return { text: `${a} × ${b} = ?`, answer: a * b };
+  }
+  if (op === '-') {
+    let a = randInt(rng, 10, 99);
+    let b = randInt(rng, 1, 90);
+    if (b > a) [a, b] = [b, a];
+    return { text: `${a} - ${b} = ?`, answer: a - b };
+  }
+  // '+'
+  const a = randInt(rng, 10, 99);
+  const b = randInt(rng, 10, 99);
+  return { text: `${a} + ${b} = ?`, answer: a + b };
+}
+
+function genStroopRound(rng) {
+  const COLORS = ['RED', 'BLUE', 'GREEN', 'YELLOW', 'PURPLE', 'ORANGE'];
+  const word = COLORS[randInt(rng, 0, COLORS.length - 1)];
+  let ink = COLORS[randInt(rng, 0, COLORS.length - 1)];
+  while (ink === word) ink = COLORS[randInt(rng, 0, COLORS.length - 1)];
+  const options = shuffleInPlace(rng, [ink, ...shuffleInPlace(rng, COLORS.filter(c => c !== ink)).slice(0, 3)]);
+  return { word, ink, options };
+}
+
+function genHigherLowerSequence(rng, len) {
+  const seq = [];
+  while (seq.length < len) {
+    const next = randInt(rng, 1, 13);
+    if (seq.length === 0 || seq[seq.length - 1] !== next) seq.push(next);
+  }
+  return seq;
+}
+
+function genOddOneOut(rng) {
+  const pick = ODD_ONE_OUT_POOL[randInt(rng, 0, ODD_ONE_OUT_POOL.length - 1)];
+  const options = shuffleInPlace(rng, [...pick.group, pick.odd]);
+  return { options, odd: pick.odd };
+}
+
+function genTrivia(rng) {
+  const pick = TRIVIA_POOL[randInt(rng, 0, TRIVIA_POOL.length - 1)];
+  const indexed = pick.choices.map((c, i) => ({ c, i }));
+  shuffleInPlace(rng, indexed);
+  const correctIdx = indexed.findIndex(x => x.i === pick.a);
+  return { q: pick.q, choices: indexed.map(x => x.c), correctIdx };
+}
+
+function genMemoryFlip(rng, pairs) {
+  const ICONS = ['🍎','🍋','🍇','🍓','🍒','🥝','🍑','🍍','🥥','🍉','🍪','🍩','🍿','🧊','🧁','🍔','🍟','🌮','🍕','🥨','🧠','🎭','🗝️','🕯️','🪙','🗡️'];
+  const chosen = shuffleInPlace(rng, [...ICONS]).slice(0, Math.max(2, pairs));
+  const deck = shuffleInPlace(rng, [...chosen, ...chosen]).map((sym, idx) => ({
+    idx,
+    sym,
+    faceUp: false,
+    matched: false,
+  }));
+  return { deck, pairs };
+}
+
+function genSkullTap(rng) {
+  // 12 tiles, 3 skulls, 9 safe
+  const tiles = Array.from({ length: 12 }, (_, i) => i);
+  shuffleInPlace(rng, tiles);
+  const skullSet = new Set(tiles.slice(0, 3));
+  return {
+    skullSet,
+    tapped: new Set(), // tile indices tapped
+    dead: false,
+  };
+}
+
+function genTimingChallenge(rng, rounds) {
+  const targets = Array.from({ length: rounds }, () => randInt(rng, 2, 10)); // whole seconds only
+  return { targets, rounds };
+}
+
+function maybeSendNightChallengeProgress(correct, total, finished) {
+  const payload = { correct, total, finished: !!finished };
+  if (
+    nightChallengeLastSent &&
+    nightChallengeLastSent.correct === payload.correct &&
+    nightChallengeLastSent.total === payload.total &&
+    nightChallengeLastSent.finished === payload.finished
+  ) return;
+  nightChallengeLastSent = payload;
+  socket.emit('night_challenge_progress', payload, () => {});
+}
+
+function renderNightChallenge(state, containerEl, { showCoverToggle = false, isOverlay = false } = {}) {
+  if (!containerEl) return;
+  if (!state.nightChallenge || !state.nightChallenge.type) {
+    containerEl.innerHTML = '';
+    return;
+  }
+  ensureNightChallengeLocal(state);
+  const ch = state.nightChallenge;
+  const local = nightChallengeLocal;
+  if (!local) return;
+
+  const title = NIGHT_CHALLENGE_LABELS[ch.type] || 'Night Challenge';
+  const earnedSoFar = ch.earnedSoFar || 0;
+  const target = ch.target || 0;
+
+  const headerHtml = isOverlay ? '' : `
+    <div class="phase-header">
+      <div class="phase-eyebrow">Night Challenge</div>
+      <div class="phase-title">${title}</div>
+      <div class="phase-subtitle">
+        ${state.prizeMode === 'SHOTS' ? 'Shots Pot' : 'Prize Pool'}:
+        <strong style="color:var(--gold-light)">${formatPrizeTotal(state.prizePool || 0, state.prizeMode || 'CASH')}</strong>
+        ${target ? (
+          (state.prizeMode === 'SHOTS')
+            ? `<span style="color:var(--text-muted)"> · Tonight up to ${formatShots(target)}</span>`
+            : `<span style="color:var(--text-muted)"> · Tonight up to ${formatMoney(target)}</span>`
+        ) : ''}
+      </div>
+    </div>
+    <div class="info-box gold mb-16" style="text-align:center">
+      <div style="color:var(--text-dim);font-size:0.9rem">
+        Earned so far: <strong style="color:var(--gold-light)">${formatPrizeIncrement(earnedSoFar, state.prizeMode || 'CASH')}</strong>
+        ${target ? (
+          (state.prizeMode === 'SHOTS')
+            ? `<span style="color:var(--text-muted)"> / ${formatShots(target)}</span>`
+            : `<span style="color:var(--text-muted)"> / ${formatMoney(target)}</span>`
+        ) : ''}
+      </div>
+      <div style="color:var(--text-muted);font-size:0.78rem;margin-top:6px;font-style:italic">
+        Keep your phone private — just look busy.
+      </div>
+    </div>
+  `;
+
+  const coverToggleHtml = showCoverToggle ? `
+    <div class="night-cover-toggle">
+      <button id="btn-toggle-cover" class="night-cover-reveal-btn">🗡️ Show my controls</button>
+    </div>
+  ` : '';
+
+  let bodyHtml = '';
+  if (local.type === 'MATH_BLITZ') {
+    bodyHtml = renderMathBlitzHtml(local);
+  } else if (local.type === 'COLOR_STROOP') {
+    bodyHtml = renderStroopHtml(local);
+  } else if (local.type === 'HIGHER_LOWER') {
+    bodyHtml = renderHigherLowerHtml(local);
+  } else if (local.type === 'ODD_ONE_OUT') {
+    bodyHtml = renderOddOneOutHtml(local);
+  } else if (local.type === 'TRIVIA_ONE') {
+    bodyHtml = renderTriviaHtml(local);
+  } else if (local.type === 'MEMORY_FLIP') {
+    bodyHtml = renderMemoryFlipHtml(local);
+  } else if (local.type === 'DONT_TAP_SKULL') {
+    bodyHtml = renderSkullTapHtml(local);
+  } else if (local.type === 'TIMING_CHALLENGE') {
+    bodyHtml = renderTimingChallengeHtml(local);
+  }
+
+  containerEl.innerHTML = `${coverToggleHtml}${headerHtml}${bodyHtml}`;
+
+  // Wire cover-toggle button if present (renderNight handles toggling)
+  // Wire interactions
+  attachNightChallengeHandlers(state, containerEl, { isOverlay });
+}
+
+function attachNightChallengeHandlers(state, containerEl, { isOverlay } = {}) {
+  const local = nightChallengeLocal;
+  if (!local) return;
+
+  // Shared — no-op if already finished
+  function finishIfDone() {
+    if (local.idx >= local.tasks) local.finished = true;
+  }
+
+  // MATH
+  const input = containerEl.querySelector('#nc-math-input');
+  if (input) {
+    input.value = local.inputValue || '';
+    input.addEventListener('input', () => { local.inputValue = input.value; });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') containerEl.querySelector('#nc-lock-btn')?.click();
+    });
+  }
+  containerEl.querySelector('#nc-lock-btn')?.addEventListener('click', () => {
+    if (local.finished) return;
+    const q = local.questions?.[local.idx];
+    const raw = (local.inputValue || '').trim();
+    const val = raw === '' ? null : Number(raw);
+    const isCorrect = (val !== null && Number.isFinite(val) && q && Number(val) === q.answer);
+    if (isCorrect) local.correct++;
+    local.idx++;
+    local.inputValue = '';
+    local.lastFeedback = isCorrect ? '✅ Correct' : '❌ Wrong';
+    finishIfDone();
+    maybeSendNightChallengeProgress(local.correct, local.tasks, local.finished);
+    renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+  });
+
+  // STROOP
+  containerEl.querySelectorAll('[data-nc-stroop]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (local.finished) return;
+      const choice = btn.dataset.ncStroop;
+      const round = local.rounds?.[local.idx];
+      const isCorrect = round && choice === round.ink;
+      if (isCorrect) local.correct++;
+      local.idx++;
+      local.lastFeedback = isCorrect ? '✅ Correct' : '❌ Wrong';
+      finishIfDone();
+      maybeSendNightChallengeProgress(local.correct, local.tasks, local.finished);
+      renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+    });
+  });
+
+  // HIGHER / LOWER
+  containerEl.querySelectorAll('[data-nc-hl]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (local.finished) return;
+      const guess = btn.dataset.ncHl; // 'HIGHER' | 'LOWER'
+      const cur = local.sequence?.[local.idx];
+      const next = local.sequence?.[local.idx + 1];
+      const isCorrect = next != null && cur != null && (
+        (guess === 'HIGHER' && next > cur) ||
+        (guess === 'LOWER' && next < cur)
+      );
+      if (isCorrect) local.correct++;
+      local.idx++;
+      local.lastFeedback = `Next was ${next}. ${isCorrect ? '✅' : '❌'}`;
+      finishIfDone();
+      maybeSendNightChallengeProgress(local.correct, local.tasks, local.finished);
+      renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+    });
+  });
+
+  // ODD ONE OUT
+  containerEl.querySelectorAll('[data-nc-odd]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (local.finished) return;
+      const choice = btn.dataset.ncOdd;
+      const isCorrect = local.odd && choice === local.odd.odd;
+      if (isCorrect) local.correct++;
+      local.idx = local.tasks; // single question
+      local.finished = true;
+      local.lastFeedback = isCorrect ? '✅ Correct' : '❌ Wrong';
+      maybeSendNightChallengeProgress(local.correct, local.tasks, local.finished);
+      renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+    });
+  });
+
+  // TRIVIA
+  containerEl.querySelectorAll('[data-nc-trivia]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (local.finished) return;
+      const idx = parseInt(btn.dataset.ncTrivia);
+      const isCorrect = local.trivia && idx === local.trivia.correctIdx;
+      if (isCorrect) local.correct++;
+      local.idx = local.tasks; // single question
+      local.finished = true;
+      local.lastFeedback = isCorrect ? '✅ Correct' : '❌ Wrong';
+      maybeSendNightChallengeProgress(local.correct, local.tasks, local.finished);
+      renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+    });
+  });
+
+  // MEMORY FLIP
+  containerEl.querySelectorAll('[data-nc-mem]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (local.finished) return;
+      if (local.memoryLock) return;
+      const i = parseInt(btn.dataset.ncMem);
+      const card = local.memory?.deck?.[i];
+      if (!card || card.matched || card.faceUp) return;
+
+      card.faceUp = true;
+
+      if (local.memoryFirst == null) {
+        local.memoryFirst = i;
+        renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+        return;
+      }
+
+      const j = local.memoryFirst;
+      const first = local.memory.deck[j];
+      local.memoryFirst = null;
+
+      const isMatch = first && first.sym === card.sym;
+      if (isMatch) {
+        first.matched = true;
+        card.matched = true;
+        local.correct++;
+        local.lastFeedback = '✅ Match!';
+        local.idx = local.correct;
+        if (local.correct >= local.tasks) local.finished = true;
+        maybeSendNightChallengeProgress(local.correct, local.tasks, local.finished);
+        renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+        return;
+      }
+
+      // Mismatch: briefly show, then flip back
+      local.memoryLock = true;
+      local.lastFeedback = '❌ Not a match';
+      renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+      setTimeout(() => {
+        try {
+          first.faceUp = false;
+          card.faceUp = false;
+          local.memoryLock = false;
+          renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+        } catch (_) {}
+      }, 650);
+    });
+  });
+
+  // DON'T TAP THE SKULL
+  containerEl.querySelectorAll('[data-nc-skull]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (local.finished) return;
+      const i = parseInt(btn.dataset.ncSkull);
+      if (local.skull?.tapped?.has(i)) return;
+      local.skull.tapped.add(i);
+
+      const isSkull = local.skull.skullSet.has(i);
+      if (isSkull) {
+        local.skull.dead = true;
+        local.finished = true;
+        local.lastFeedback = '☠️ You hit a skull. Game over.';
+        maybeSendNightChallengeProgress(local.correct, local.tasks, true);
+        renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+        return;
+      }
+
+      local.correct++;
+      local.idx = local.correct;
+      if (local.correct >= local.tasks) {
+        local.finished = true;
+        local.lastFeedback = '✅ You survived all taps!';
+      } else {
+        local.lastFeedback = '✅ Safe';
+      }
+      maybeSendNightChallengeProgress(local.correct, local.tasks, local.finished);
+      renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+    });
+  });
+
+  // TIMING CHALLENGE
+  containerEl.querySelectorAll('[data-nc-timing]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (local.finished) return;
+      const action = btn.dataset.ncTiming; // START | STOP
+      const targets = local.timing?.targets || [];
+      const target = targets[local.idx];
+      if (!target) return;
+
+      if (action === 'START') {
+        local.timingRunning = true;
+        local.timingStartMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+        return;
+      }
+
+      if (action === 'STOP' && local.timingRunning) {
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        const elapsed = (now - (local.timingStartMs || now)) / 1000;
+        const diff = elapsed - target;
+        const ok = Math.abs(diff) <= 0.5;
+        if (ok) local.correct++;
+        local.timingLast = { target, elapsed, diff, ok };
+        local.timingRunning = false;
+        local.timingStartMs = null;
+        local.idx++;
+        if (local.idx >= local.tasks) local.finished = true;
+        local.lastFeedback = ok ? '✅ Nailed it' : '❌ Missed it';
+        maybeSendNightChallengeProgress(local.correct, local.tasks, local.finished);
+        renderNightChallenge(state, containerEl, { isOverlay, showCoverToggle: false });
+      }
+    });
+  });
+}
+
+function renderMathBlitzHtml(local) {
+  const done = local.finished;
+  const q = local.questions?.[Math.min(local.idx, (local.questions?.length || 1) - 1)];
+  return `
+    <div class="night-challenge-card">
+      <div class="night-challenge-progress">
+        Question ${Math.min(local.idx + 1, local.tasks)} of ${local.tasks} · Correct: ${local.correct}
+      </div>
+      ${done ? `
+        <div class="night-challenge-done">Done! ✅</div>
+        <div class="night-challenge-done-sub">Final score: ${local.correct} / ${local.tasks}</div>
+      ` : `
+        <div class="night-challenge-question">${q ? escHtml(q.text) : ''}</div>
+        <input id="nc-math-input" class="night-challenge-input" inputmode="numeric" pattern="[0-9\\-]*" autocomplete="off" placeholder="Type your answer" />
+        <button class="btn btn-primary btn-large" id="nc-lock-btn">Lock In Answer</button>
+        ${local.lastFeedback ? `<div class="night-challenge-feedback">${escHtml(local.lastFeedback)}</div>` : ''}
+      `}
+    </div>
+  `;
+}
+
+function renderStroopHtml(local) {
+  const done = local.finished;
+  const round = local.rounds?.[local.idx];
+  const inkHex = STROOP_COLOR_HEX[round?.ink] || '#ffffff';
+  return `
+    <div class="night-challenge-card">
+      <div class="night-challenge-progress">
+        Round ${Math.min(local.idx + 1, local.tasks)} of ${local.tasks} · Correct: ${local.correct}
+      </div>
+      ${done ? `
+        <div class="night-challenge-done">Done! ✅</div>
+        <div class="night-challenge-done-sub">Final score: ${local.correct} / ${local.tasks}</div>
+      ` : `
+        <div class="night-challenge-stroop-word" style="color:${inkHex}">${escHtml(round.word)}</div>
+        <div class="night-challenge-grid">
+          ${(round.options || []).map(opt => `
+            <button class="btn btn-secondary night-challenge-choice" data-nc-stroop="${opt}">
+              <span class="night-challenge-swatch" style="background:${STROOP_COLOR_HEX[opt] || '#999'}"></span>
+              ${escHtml(opt)}
+            </button>
+          `).join('')}
+        </div>
+        ${local.lastFeedback ? `<div class="night-challenge-feedback">${escHtml(local.lastFeedback)}</div>` : ''}
+      `}
+    </div>
+  `;
+}
+
+function renderHigherLowerHtml(local) {
+  const done = local.finished;
+  const cur = local.sequence?.[local.idx];
+  const next = local.sequence?.[local.idx + 1];
+  return `
+    <div class="night-challenge-card">
+      <div class="night-challenge-progress">
+        Guess ${Math.min(local.idx + 1, local.tasks)} of ${local.tasks} · Correct: ${local.correct}
+      </div>
+      ${done ? `
+        <div class="night-challenge-done">Done! ✅</div>
+        <div class="night-challenge-done-sub">Final score: ${local.correct} / ${local.tasks}</div>
+      ` : `
+        <div class="night-challenge-hl-number">${cur ?? ''}</div>
+        <div class="night-challenge-hl-buttons">
+          <button class="btn btn-primary btn-large" data-nc-hl="HIGHER">Higher</button>
+          <button class="btn btn-secondary btn-large" data-nc-hl="LOWER">Lower</button>
+        </div>
+        <div class="night-challenge-hl-hint">Next will be 1–13</div>
+        ${local.lastFeedback ? `<div class="night-challenge-feedback">${escHtml(local.lastFeedback)}</div>` : ''}
+      `}
+    </div>
+  `;
+}
+
+function renderOddOneOutHtml(local) {
+  const done = local.finished;
+  const odd = local.odd;
+  return `
+    <div class="night-challenge-card">
+      <div class="night-challenge-progress">Pick the word that doesn't belong</div>
+      ${done ? `
+        <div class="night-challenge-done">Locked In ✅</div>
+        <div class="night-challenge-done-sub">${escHtml(local.lastFeedback || '')}</div>
+      ` : `
+        <div class="night-challenge-grid">
+          ${(odd?.options || []).map(w => `
+            <button class="btn btn-secondary night-challenge-choice" data-nc-odd="${escHtml(w)}">${escHtml(w)}</button>
+          `).join('')}
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderTriviaHtml(local) {
+  const done = local.finished;
+  const t = local.trivia;
+  return `
+    <div class="night-challenge-card">
+      <div class="night-challenge-progress">Trivia — choose 1 answer</div>
+      ${done ? `
+        <div class="night-challenge-done">Locked In ✅</div>
+        <div class="night-challenge-done-sub">${escHtml(local.lastFeedback || '')}</div>
+      ` : `
+        <div class="night-challenge-question">${escHtml(t?.q || '')}</div>
+        <div class="night-challenge-grid">
+          ${(t?.choices || []).map((c, i) => `
+            <button class="btn btn-secondary night-challenge-choice" data-nc-trivia="${i}">${escHtml(c)}</button>
+          `).join('')}
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderMemoryFlipHtml(local) {
+  const done = local.finished;
+  const deck = local.memory?.deck || [];
+  return `
+    <div class="night-challenge-card">
+      <div class="night-challenge-progress">
+        Matches ${local.correct} / ${local.tasks}
+      </div>
+      ${done ? `
+        <div class="night-challenge-done">Done! ✅</div>
+        <div class="night-challenge-done-sub">Final score: ${local.correct} / ${local.tasks}</div>
+      ` : `
+        <div class="night-challenge-feedback">${escHtml(local.lastFeedback || 'Find matching pairs')}</div>
+      `}
+      <div class="nc-tile-grid nc-grid-4">
+        ${deck.map((c, i) => `
+          <button class="nc-tile nc-memory ${c.matched ? 'matched' : ''} ${c.faceUp ? 'faceup' : ''}"
+                  data-nc-mem="${i}" aria-label="card">
+            <span class="nc-tile-inner">${c.faceUp || c.matched ? escHtml(c.sym) : '❓'}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderSkullTapHtml(local) {
+  const done = local.finished;
+  const skull = local.skull;
+  const tapped = skull?.tapped || new Set();
+  const skulls = skull?.skullSet || new Set();
+  return `
+    <div class="night-challenge-card">
+      <div class="night-challenge-progress">
+        Safe taps ${local.correct} / ${local.tasks} · Tap carefully
+      </div>
+      ${done ? `
+        <div class="night-challenge-done">${skull?.dead ? 'Busted ☠️' : 'Done ✅'}</div>
+        <div class="night-challenge-done-sub">${escHtml(local.lastFeedback || '')}</div>
+      ` : `
+        <div class="night-challenge-feedback">${escHtml(local.lastFeedback || 'Tap a tile. If it’s a skull, you lose.')}</div>
+      `}
+      <div class="nc-tile-grid nc-grid-3">
+        ${Array.from({ length: 12 }, (_, i) => {
+          const isTapped = tapped.has(i);
+          const isSkull = skulls.has(i);
+          const icon = !isTapped ? '🟦' : (isSkull ? '☠️' : '✅');
+          const cls = !isTapped ? '' : (isSkull ? 'bad' : 'good');
+          return `
+            <button class="nc-tile nc-skull ${cls}" data-nc-skull="${i}" ${done ? 'disabled' : ''}>
+              <span class="nc-tile-inner">${icon}</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderTimingChallengeHtml(local) {
+  const done = local.finished;
+  const targets = local.timing?.targets || [];
+  const currentTarget = targets[Math.min(local.idx, targets.length - 1)];
+  const running = !!local.timingRunning;
+  const last = local.timingLast;
+  const roundNum = Math.min(local.idx + 1, local.tasks);
+
+  const lastHtml = last ? `
+    <div class="nc-timing-result ${last.ok ? 'ok' : 'bad'}">
+      <div><strong>Target:</strong> ${last.target}s</div>
+      <div><strong>You:</strong> ${last.elapsed.toFixed(2)}s</div>
+      <div><strong>Diff:</strong> ${last.diff >= 0 ? '+' : ''}${last.diff.toFixed(2)}s</div>
+    </div>
+  ` : '';
+
+  return `
+    <div class="night-challenge-card">
+      <div class="night-challenge-progress">
+        Round ${roundNum} of ${local.tasks} · Correct: ${local.correct}
+      </div>
+      ${done ? `
+        <div class="night-challenge-done">Done! ✅</div>
+        <div class="night-challenge-done-sub">Final score: ${local.correct} / ${local.tasks}</div>
+        ${lastHtml}
+      ` : `
+        <div class="nc-timing-target">Stop at <strong>${currentTarget}s</strong></div>
+        <div class="nc-timing-sub">${running ? 'No timer. Trust your instincts.' : 'Tap start, then stop when you think you hit it.'}</div>
+        <button class="btn ${running ? 'btn-danger' : 'btn-primary'} btn-large" data-nc-timing="${running ? 'STOP' : 'START'}">
+          ${running ? 'Stop' : 'Start'}
+        </button>
+        <div class="night-challenge-feedback">${escHtml(local.lastFeedback || (running ? '...' : 'Within ±0.50s = point'))}</div>
+        ${lastHtml}
+      `}
+    </div>
+  `;
 }

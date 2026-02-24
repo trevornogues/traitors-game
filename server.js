@@ -9,6 +9,7 @@ const path = require('path');
 const {
   createGame, getGame, getGameBySocket, deleteGame,
   PHASES,
+  NIGHT_CHALLENGES,
 } = require('./game');
 
 const app = express();
@@ -16,6 +17,7 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -33,6 +35,14 @@ function broadcastGameState(game) {
     if (socket) {
       socket.emit('game_state', game.buildPayloadFor(player.socketId));
     }
+  });
+}
+
+function broadcastGameStateWhere(game, predicateFn) {
+  game.players.forEach(player => {
+    if (!predicateFn(player)) return;
+    const socket = io.sockets.sockets.get(player.socketId);
+    if (socket) socket.emit('game_state', game.buildPayloadFor(player.socketId));
   });
 }
 
@@ -121,7 +131,7 @@ io.on('connection', (socket) => {
   console.log(`[+] Connected: ${socket.id}`);
 
   // ── CREATE GAME ────────────────────────────────────────────────────────────
-  socket.on('create_game', ({ name, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode }, cb) => {
+  socket.on('create_game', ({ name, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges }, cb) => {
     if (!name || !numTraitors) return cb({ error: 'Missing fields' });
     const n = parseInt(numTraitors);
     if (isNaN(n) || n < 1 || n > 8) return cb({ error: 'Invalid traitor count (1–8)' });
@@ -131,8 +141,21 @@ io.on('connection', (socket) => {
     const egt = Math.min(6,  Math.max(3, parseInt(endGameThreshold) || 5));
     const hrt = Math.min(6,  Math.max(3, parseInt(hideRoleThreshold) || 4));
     const tbm = (tieBreakerMode === 'host') ? 'host' : 'random';
+    const nct = Math.max(0, Math.min(1_000_000, parseInt(nightChallengeTarget) || 10000));
+    const pm  = (prizeMode === 'SHOTS') ? 'SHOTS' : 'CASH';
+    const spnFloat = parseFloat(shotsPerNight);
+    const spn = (!isFinite(spnFloat) ? 1 : Math.min(5, Math.max(0.25, spnFloat)));
 
-    const game = createGame(socket.id, name.trim(), n, t, mp, egt, hrt, tbm);
+    let enc = undefined;
+    if (enabledNightChallenges !== undefined) {
+      if (!Array.isArray(enabledNightChallenges)) return cb({ error: 'Invalid enabledNightChallenges' });
+      const allowed = new Set(Object.values(NIGHT_CHALLENGES));
+      const filtered = [...new Set(enabledNightChallenges.map(x => String(x || '').trim()).filter(x => allowed.has(x)))];
+      if (!filtered.length) return cb({ error: 'At least one night challenge must be enabled' });
+      enc = filtered;
+    }
+
+    const game = createGame(socket.id, name.trim(), n, t, mp, egt, hrt, tbm, nct, pm, spn, enc);
     socket.join(game.code);
     console.log(`[GAME] Created: ${game.code} by ${name} (${n} traitors)`);
     cb({ ok: true, code: game.code });
@@ -213,14 +236,24 @@ io.on('connection', (socket) => {
   });
 
   // ── UPDATE LOBBY SETTINGS (host only, lobby phase only) ────────────────────
-  socket.on('update_lobby_settings', ({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode }, cb) => {
+  socket.on('update_lobby_settings', ({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges }, cb) => {
     const game = getGameBySocket(socket.id);
     if (!game) return cb({ error: 'Not in a game' });
     if (!game.isHost(socket.id)) return cb({ error: 'Not the host' });
-    const result = game.updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode });
+    const result = game.updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges });
     if (result.error) return cb(result);
     cb({ ok: true });
     broadcastGameState(game);
+  });
+
+  // ── NIGHT CHALLENGE: REPORT PROGRESS (any alive player; only faithful count) ─
+  socket.on('night_challenge_progress', ({ correct, total, finished }, cb) => {
+    const game = getGameBySocket(socket.id);
+    if (!game) return cb && cb({ error: 'Not in a game' });
+    const result = game.reportNightChallengeProgress(socket.id, { correct, total, finished });
+    if (result.error) return cb && cb(result);
+    if (cb) cb({ ok: true });
+    broadcastGameState(game); // updates live earned amount
   });
 
   // ── START GAME ─────────────────────────────────────────────────────────────
@@ -274,7 +307,8 @@ io.on('connection', (socket) => {
     if (result.error) return cb(result);
 
     cb({ ok: true });
-    broadcastGameState(game); // push live selections to all traitors
+    // Only traitors need to see live selection updates (prevents disrupting faithful mini-games)
+    broadcastGameStateWhere(game, p => p.role === 'TRAITOR' && p.alive && !p.spectator);
   });
 
   // ── TRAITOR: SET NIGHT MODE (murder vs recruit choice) ─────────────────────
@@ -286,7 +320,7 @@ io.on('connection', (socket) => {
 
     game.setNightModeChoice(mode);
     cb({ ok: true });
-    broadcastGameState(game);
+    broadcastGameStateWhere(game, p => p.role === 'TRAITOR' && p.alive && !p.spectator);
   });
 
   // ── TRAITOR: LOCK IN ────────────────────────────────────────────────────────
@@ -298,9 +332,26 @@ io.on('connection', (socket) => {
     if (result.error) return cb(result);
 
     cb({ ok: true });
-    broadcastGameState(game);
+    // If night resolved, everyone needs the update (phase → MORNING). Otherwise, traitors only.
+    if (game.phase === PHASES.MORNING) {
+      broadcastGameState(game);
+    } else {
+      broadcastGameStateWhere(game, p => p.role === 'TRAITOR' && p.alive && !p.spectator);
+    }
 
     // If night resolved, host gets notified via game state (phase → MORNING)
+  });
+
+  // ── TRAITOR: UNLOCK (allow changing vote after locking in) ──────────────────
+  socket.on('traitor_unlock', (_, cb) => {
+    const game = getGameBySocket(socket.id);
+    if (!game) return cb({ error: 'Not in a game' });
+
+    const result = game.traitorUnlock(socket.id);
+    if (result.error) return cb(result);
+
+    cb({ ok: true });
+    broadcastGameStateWhere(game, p => p.role === 'TRAITOR' && p.alive && !p.spectator);
   });
 
   // ── HOST: PROCEED TO ROUND TABLE (from morning) ────────────────────────────
@@ -563,7 +614,7 @@ io.on('connection', (socket) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, HOST, () => {
   const { networkInterfaces } = require('os');
   const nets = networkInterfaces();
   let localIP = 'localhost';

@@ -30,6 +30,82 @@ const NIGHT_MODES = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Night Challenges (mini-games) — played during NIGHT to build a prize pool
+// ─────────────────────────────────────────────────────────────────────────────
+const NIGHT_CHALLENGES = {
+  MATH_BLITZ: 'MATH_BLITZ',                 // 4 typed answers
+  ODD_ONE_OUT: 'ODD_ONE_OUT',               // 1 question (4 words)
+  COLOR_STROOP: 'COLOR_STROOP',             // 4 taps
+  HIGHER_LOWER: 'HIGHER_LOWER',             // 4 guesses
+  TRIVIA_ONE: 'TRIVIA_ONE',                 // 1 question (4 choices)
+  MEMORY_FLIP: 'MEMORY_FLIP',               // 4 matches (memory pairs)
+  DONT_TAP_SKULL: 'DONT_TAP_SKULL',         // up to 4 safe taps; stop on skull
+  TIMING_CHALLENGE: 'TIMING_CHALLENGE',     // 1 round; stop at target second
+};
+
+function sanitizeEnabledNightChallenges(list) {
+  const all = Object.values(NIGHT_CHALLENGES);
+  const allowed = new Set(all);
+  if (!Array.isArray(list)) return [];
+  const filtered = [];
+  const seen = new Set();
+  for (const item of list) {
+    const val = String(item || '').trim();
+    if (!val || !allowed.has(val) || seen.has(val)) continue;
+    seen.add(val);
+    filtered.push(val);
+  }
+  return filtered;
+}
+
+// Prize pool modes:
+// - CASH: faithful build a cash prize pool; winners split at the end
+// - SHOTS: faithful build a \"shots\" pot; LOSERS split at the end (drinking-game variant)
+const PRIZE_MODES = {
+  CASH: 'CASH',
+  SHOTS: 'SHOTS',
+};
+
+const NIGHT_CHALLENGE_TASKS = {
+  [NIGHT_CHALLENGES.MATH_BLITZ]: 4,
+  [NIGHT_CHALLENGES.ODD_ONE_OUT]: 1,
+  [NIGHT_CHALLENGES.COLOR_STROOP]: 4,
+  [NIGHT_CHALLENGES.HIGHER_LOWER]: 4,
+  [NIGHT_CHALLENGES.TRIVIA_ONE]: 1,
+  [NIGHT_CHALLENGES.MEMORY_FLIP]: 4,
+  [NIGHT_CHALLENGES.DONT_TAP_SKULL]: 4,
+  [NIGHT_CHALLENGES.TIMING_CHALLENGE]: 1,
+};
+
+function randomSeedInt() {
+  // 32-bit-ish seed for client-side seeded RNG
+  return Math.floor(Math.random() * 2_000_000_000);
+}
+
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function normalizeEnabledNightChallenges(enabledTypes) {
+  const types = (Array.isArray(enabledTypes) && enabledTypes.length)
+    ? sanitizeEnabledNightChallenges(enabledTypes)
+    : Object.values(NIGHT_CHALLENGES);
+  return types.length ? types : Object.values(NIGHT_CHALLENGES);
+}
+
+function buildNightChallenge(type) {
+  return {
+    type,
+    seed: randomSeedInt(),
+    tasksPerPlayer: NIGHT_CHALLENGE_TASKS[type] || 10,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Helper: generate short game code
 // ─────────────────────────────────────────────────────────────────────────────
 function generateCode() {
@@ -45,7 +121,7 @@ function generateCode() {
 // Game class
 // ─────────────────────────────────────────────────────────────────────────────
 class Game {
-  constructor(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode) {
+  constructor(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges) {
     this.code = generateCode();
     this.phase = PHASES.LOBBY;
     this.numTraitors = numTraitors;
@@ -123,6 +199,25 @@ class Game {
     this.isEndGameMode = false;
     this.winner = null;            // 'FAITHFUL' | 'TRAITORS'
     this.finalPlayerRoles = [];    // revealed at game over
+
+    // Prize pool / night challenge
+    this.prizePool = 0;
+    this.nightChallengeTarget = Math.max(0, parseInt(nightChallengeTarget) || 10000);
+    this.prizeMode = (prizeMode === PRIZE_MODES.SHOTS) ? PRIZE_MODES.SHOTS : PRIZE_MODES.CASH;
+    // SHOTS mode only (max shots possible per night)
+    // Stored in "ticks": 1 tick = 1/4 shot. Range: 0.25..5.00 shots => 1..20 ticks.
+    this.shotsPerNightTicks = Math.min(20, Math.max(1, Math.round((parseFloat(shotsPerNight) || 1) * 4)));
+    this.currentNightChallenge = null;       // { type, seed, tasksPerPlayer }
+    this.nightChallengeProgress = {};        // socketId -> { correct, total, finished }
+    this.lastNightChallengeResult = null;    // { type, earned, target, possible, correct }
+    // Shuffle-bag to reduce repeats: deal each enabled challenge once per cycle.
+    this._nightChallengeDeck = [];           // array of challenge type strings
+    this._lastNightChallengeType = null;
+
+    // Which night challenges are in rotation (host-configurable; at least one required)
+    const requested = enabledNightChallenges;
+    const sanitized = Array.isArray(requested) ? sanitizeEnabledNightChallenges(requested) : [];
+    this.enabledNightChallenges = sanitized.length ? sanitized : Object.values(NIGHT_CHALLENGES);
   }
 
   // ─── Player helpers ────────────────────────────────────────────────────────
@@ -181,7 +276,7 @@ class Game {
     }
   }
 
-  updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode }) {
+  updateLobbySettings({ maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges }) {
     if (this.phase !== PHASES.LOBBY) return { error: 'Game already started' };
     if (maxPlayers !== undefined) {
       const mp = Math.min(30, Math.max(3, parseInt(maxPlayers) || 30));
@@ -200,8 +295,34 @@ class Game {
     if (tieBreakerMode !== undefined) {
       this.tieBreakerMode = (tieBreakerMode === 'host') ? 'host' : 'random';
     }
+    if (prizeMode !== undefined) {
+      if (![PRIZE_MODES.CASH, PRIZE_MODES.SHOTS].includes(prizeMode)) return { error: 'Invalid prize mode' };
+      this.prizeMode = prizeMode;
+    }
+    if (shotsPerNight !== undefined) {
+      const spn = parseFloat(shotsPerNight);
+      if (!isFinite(spn) || spn < 0.25 || spn > 5) return { error: 'Invalid shots per night (0.25–5)' };
+      const ticks = Math.round(spn * 4);
+      if (ticks < 1 || ticks > 20) return { error: 'Invalid shots per night (0.25–5)' };
+      this.shotsPerNightTicks = ticks;
+    }
+    if (nightChallengeTarget !== undefined) {
+      const t = parseInt(nightChallengeTarget);
+      if (isNaN(t) || t < 0 || t > 1_000_000) return { error: 'Invalid night challenge target (0–1,000,000)' };
+      this.nightChallengeTarget = t;
+    }
+
+    if (enabledNightChallenges !== undefined) {
+      const sanitized = sanitizeEnabledNightChallenges(enabledNightChallenges);
+      if (!sanitized.length) return { error: 'At least one night challenge must be enabled' };
+      this.enabledNightChallenges = sanitized;
+      // Reset rotation so it reflects the new enabled list.
+      this._nightChallengeDeck = [];
+    }
     return { ok: true };
   }
+
+  // (nightChallengeTarget updates are handled via updateLobbySettings)
 
   updateHostSocket(newSocketId) {
     const host = this.players.find(p => p.isHost);
@@ -280,12 +401,91 @@ class Game {
     this.traitorSelections = {};
     this.traitorLockIns = new Set();
     this.recruitedThisRound = false;
+    // Start a fresh night challenge each night (shuffle-bag to avoid repeats)
+    this.currentNightChallenge = this._pickNextNightChallenge();
+    this.nightChallengeProgress = {};
     // Reset morning reveal for fresh round
     this.morningRevealOrder = [];
     this.morningRevealIndex = 0;
     this.morningRevealStarted = false;
     this.morningRevealComplete = false;
     this.phase = PHASES.NIGHT;
+  }
+
+  _pickNextNightChallenge() {
+    const enabled = normalizeEnabledNightChallenges(this.enabledNightChallenges);
+
+    // If no deck, create a fresh shuffled cycle.
+    if (!Array.isArray(this._nightChallengeDeck) || this._nightChallengeDeck.length === 0) {
+      this._nightChallengeDeck = shuffleInPlace([...enabled]);
+
+      // Avoid an immediate repeat across deck boundaries when possible.
+      if (
+        this._lastNightChallengeType &&
+        this._nightChallengeDeck.length > 1 &&
+        this._nightChallengeDeck[0] === this._lastNightChallengeType
+      ) {
+        const swapIdx = this._nightChallengeDeck.findIndex(t => t !== this._lastNightChallengeType);
+        if (swapIdx > 0) {
+          [this._nightChallengeDeck[0], this._nightChallengeDeck[swapIdx]] =
+            [this._nightChallengeDeck[swapIdx], this._nightChallengeDeck[0]];
+        }
+      }
+    }
+
+    const type = this._nightChallengeDeck.shift();
+    this._lastNightChallengeType = type;
+    return buildNightChallenge(type);
+  }
+
+  reportNightChallengeProgress(socketId, progress) {
+    if (this.phase !== PHASES.NIGHT) return { error: 'Not night phase' };
+    if (!this.currentNightChallenge) return { error: 'No active night challenge' };
+    const p = this.getPlayer(socketId);
+    if (!p || !p.alive || p.spectator) return { error: 'Invalid player' };
+
+    const tasksPerPlayer = this.currentNightChallenge.tasksPerPlayer || 10;
+    const correct = Math.max(0, Math.min(tasksPerPlayer, parseInt(progress?.correct) || 0));
+    const total = Math.max(1, Math.min(tasksPerPlayer, parseInt(progress?.total) || tasksPerPlayer));
+    const finished = !!progress?.finished;
+
+    this.nightChallengeProgress[socketId] = { correct, total, finished };
+    return { ok: true };
+  }
+
+  _computeNightChallengeTotals() {
+    const challenge = this.currentNightChallenge;
+    if (!challenge) return { possible: 0, correct: 0, earned: 0 };
+
+    const tasksPerPlayer = challenge.tasksPerPlayer || 10;
+    const faithful = this.getAliveFaithful();
+    const possible = faithful.length * tasksPerPlayer;
+
+    let correct = 0;
+    faithful.forEach(fp => {
+      const prog = this.nightChallengeProgress[fp.socketId];
+      if (!prog) return;
+      correct += Math.max(0, Math.min(tasksPerPlayer, prog.correct || 0));
+    });
+
+    const ratio = possible > 0 ? (correct / possible) : 0;
+
+    if (this.prizeMode === PRIZE_MODES.SHOTS) {
+      // Drinking-game variant:
+      // - Convert completion ratio into quarter-steps (0, 1/4, 1/2, 3/4, 1)
+      // - Award that fraction of the configured max shots per night
+      // Store shots in "ticks": 1 tick = 1/4 shot
+      const steps = Math.max(0, Math.min(4, Math.floor(ratio / 0.25))); // 0..4
+      const spnTicks = Math.min(20, Math.max(1, parseInt(this.shotsPerNightTicks) || 4));
+      const earnedTicks = Math.floor((steps * spnTicks) / 4); // integer ticks
+      const targetTicks = spnTicks;                           // max ticks per night
+      return { possible, correct, earned: earnedTicks, target: targetTicks, ratio, shotsPerNightTicks: spnTicks };
+    }
+
+    // CASH (default)
+    const target = this.nightChallengeTarget || 0;
+    const earned = Math.max(0, Math.min(target, Math.round(ratio * target)));
+    return { possible, correct, earned, target, ratio };
   }
 
   setNightModeChoice(choice) {
@@ -333,6 +533,15 @@ class Game {
     return { ok: true, waitingForLockIns: true };
   }
 
+  // Called by a traitor unlocking (so they can change their vote if needed)
+  traitorUnlock(socketId) {
+    if (this.phase !== PHASES.NIGHT) return { error: 'Not night phase' };
+    const p = this.getPlayer(socketId);
+    if (!p || p.role !== ROLES.TRAITOR) return { error: 'Not a traitor' };
+    this.traitorLockIns.delete(socketId);
+    return { ok: true };
+  }
+
   _allTraitorsSameTarget() {
     const traitors = this.getAliveTraitors();
     if (traitors.length === 0) return false;
@@ -345,6 +554,19 @@ class Game {
     const traitors = this.getAliveTraitors();
     const targetId = this.traitorSelections[traitors[0].socketId];
     const target = this.getPlayer(targetId);
+
+    // Finalize the night challenge BEFORE transitioning to MORNING
+    if (this.currentNightChallenge) {
+      const totals = this._computeNightChallengeTotals();
+      this.prizePool += totals.earned;
+      this.lastNightChallengeResult = {
+        type: this.currentNightChallenge.type,
+        earned: totals.earned,
+        target: totals.target,
+        possible: totals.possible,
+        correct: totals.correct,
+      };
+    }
 
     if (this.nightMode === NIGHT_MODES.MURDER) {
       target.alive = false;
@@ -756,6 +978,15 @@ class Game {
 
       numTraitors: isHost ? this.numTraitors : undefined,
       maxPlayers: this.maxPlayers,
+
+      // Prize pool + night challenge (always visible; contains no player counts)
+      prizePool: this.prizePool || 0,
+      prizeMode: this.prizeMode,
+      nightChallengeTarget: this.nightChallengeTarget || 0,
+      shotsPerNight: (this.shotsPerNightTicks || 4) / 4,
+      shotsPerNightTicks: this.shotsPerNightTicks || 4,
+      nightChallengesAll: Object.values(NIGHT_CHALLENGES),
+      enabledNightChallenges: this.enabledNightChallenges || Object.values(NIGHT_CHALLENGES),
     };
 
     // Phase-specific additions
@@ -773,6 +1004,24 @@ class Game {
 
       case PHASES.NIGHT: {
         payload.nightMode = this.nightMode;
+
+        // Night challenge info (seeded client-side generation)
+        if (this.currentNightChallenge) {
+          const totals = this._computeNightChallengeTotals();
+          payload.nightChallenge = {
+            type: this.currentNightChallenge.type,
+            seed: this.currentNightChallenge.seed,
+            tasksPerPlayer: this.currentNightChallenge.tasksPerPlayer,
+            target: totals.target,
+            earnedSoFar: totals.earned,
+            prizeMode: this.prizeMode,
+            shotsPerNight: (this.shotsPerNightTicks || 4) / 4,
+            shotsPerNightTicks: this.shotsPerNightTicks || 4,
+          };
+        } else {
+          payload.nightChallenge = null;
+        }
+
         if (isTraitor && isAlive) {
           // Traitors see eligible targets
           const targets = this.nightMode === NIGHT_MODES.MURDER
@@ -825,11 +1074,21 @@ class Game {
             isMe: t.socketId === socketId,
           }));
         }
+
+        // Show what was earned during the night (no counts)
+        payload.lastNightChallengeResult = this.lastNightChallengeResult
+          ? {
+              type: this.lastNightChallengeResult.type,
+              earned: this.lastNightChallengeResult.earned,
+              target: this.lastNightChallengeResult.target,
+            }
+          : null;
         break;
       }
 
       case PHASES.ROUND_TABLE: {
-        payload.canOpenVoting = isHost && isAlive;
+        // Host controls should remain available even if the host has been eliminated.
+        payload.canOpenVoting = isHost;
         break;
       }
 
@@ -939,6 +1198,29 @@ class Game {
               eliminatedBy: p ? (p.eliminatedBy || null) : null,
             };
           });
+
+        // Prize split — computed server-side (no counts needed on client)
+        const alive = this.getAlivePlayers();
+        const winners = (this.winner === 'TRAITORS')
+          ? alive.filter(p => p.role === ROLES.TRAITOR)
+          : alive.filter(p => p.role === ROLES.FAITHFUL);
+        const losers = alive.filter(p => !winners.includes(p));
+
+        if (this.prizeMode === PRIZE_MODES.SHOTS) {
+          // prizePool is stored in ticks (1 tick = 1/4 shot)
+          // Per request: divide per-loser amount by number of remaining players (alive)
+          const divisor = alive.length > 0 ? alive.length : 1;
+          const perLoser = Math.ceil((this.prizePool || 0) / divisor);
+          payload.payoutAppliesTo = 'LOSERS';
+          payload.payoutShare = perLoser;
+        } else {
+          const perWinner = winners.length > 0 ? Math.floor((this.prizePool || 0) / winners.length) : 0;
+          payload.payoutAppliesTo = 'WINNERS';
+          payload.payoutShare = perWinner;
+        }
+        // Back-compat for older client fields
+        payload.winningShare = payload.payoutShare;
+        payload.winningTeam = this.winner;
         break;
       }
     }
@@ -952,10 +1234,10 @@ class Game {
 // ─────────────────────────────────────────────────────────────────────────────
 const games = new Map(); // code -> Game
 
-function createGame(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode) {
+function createGame(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges) {
   let code;
   do { code = generateCode(); } while (games.has(code));
-  const game = new Game(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode);
+  const game = new Game(hostSocketId, hostName, numTraitors, theme, maxPlayers, endGameThreshold, hideRoleThreshold, tieBreakerMode, nightChallengeTarget, prizeMode, shotsPerNight, enabledNightChallenges);
   game.code = code;
   games.set(code, game);
   return game;
@@ -976,4 +1258,4 @@ function deleteGame(code) {
   games.delete(code);
 }
 
-module.exports = { Game, createGame, getGame, getGameBySocket, deleteGame, PHASES, ROLES, NIGHT_MODES };
+module.exports = { Game, createGame, getGame, getGameBySocket, deleteGame, PHASES, ROLES, NIGHT_MODES, NIGHT_CHALLENGES, PRIZE_MODES };
