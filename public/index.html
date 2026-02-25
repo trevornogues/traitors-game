@@ -37,7 +37,7 @@
         <input type="text" id="host-name" placeholder="Enter your name" maxlength="20" autocomplete="off" />
       </div>
       <div class="form-group">
-        <label for="num-traitors">Number of Traitors</label>
+        <label for="num-traitors">Number of Insiders</label>
         <div class="traitor-picker">
           <button class="btn-stepper" id="btn-traitors-down">−</button>
           <span id="traitor-count-display">3</span>
@@ -48,7 +48,7 @@
       <div class="form-group">
         <label>Game Theme</label>
         <div class="theme-picker" id="theme-picker">
-          <button class="theme-btn active" data-theme="vampire">
+          <button class="theme-btn" data-theme="vampire">
             <span class="theme-btn-icon">🧛</span>
             <span class="theme-btn-name">Blood Court</span>
           </button>
@@ -59,6 +59,14 @@
           <button class="theme-btn" data-theme="hightreason">
             <span class="theme-btn-icon">🍵</span>
             <span class="theme-btn-name">High Treason</span>
+          </button>
+          <button class="theme-btn" data-theme="forest">
+            <span class="theme-btn-icon">🧚</span>
+            <span class="theme-btn-name">Pixies & Trolls</span>
+          </button>
+          <button class="theme-btn active" data-theme="baking">
+            <span class="theme-btn-icon">🎂</span>
+            <span class="theme-btn-name">Bake Betrayal</span>
           </button>
           <button class="theme-btn" data-theme="pirates">
             <span class="theme-btn-icon">🏴‍☠️</span>
@@ -73,6 +81,7 @@
             <span class="theme-btn-name">The Gays</span>
           </button>
         </div>
+        <p class="theme-tagline" id="theme-tagline"></p>
       </div>
       <!-- Advanced Settings -->
       <div class="form-group advanced-settings-group">

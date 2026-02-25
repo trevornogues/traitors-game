@@ -83,6 +83,7 @@ const THEMES = {
     tipIcon: '🏰',
     tipTitle: 'The game has ended.',
     tipBody: 'This free game was made with ❤️.<br>If you enjoyed plotting in the castle, a small tip means the world!',
+    tagline: "Someone in the castle is not who they claim to be.",
   },
   cowboys: {
     id: 'cowboys',
@@ -146,6 +147,7 @@ const THEMES = {
     tipIcon: '🤠',
     tipTitle: "Well, that was a hoot.",
     tipBody: "Ride's over, partner. This here game is free and made with ❤️.<br>A small tip keeps the ranch goin', pardner!",
+    tagline: "Something on this ranch ain't from around here.",
   },
 
   queer: {
@@ -210,6 +212,7 @@ const THEMES = {
     tipIcon: '🏳️‍🌈',
     tipTitle: "Okurr, the gays have spoken. ✨",
     tipBody: "Were you left absolutely gagged? This game is free and made with ❤️ (by a queer).<br>A small tip keeps the group chat alive, bestie!",
+    tagline: "The straights have infiltrated the group chat. Sniff them out, bestie.",
   },
 
   vampire: {
@@ -273,6 +276,7 @@ const THEMES = {
     tipIcon: '🦇',
     tipTitle: 'The night is over, darling.',
     tipBody: 'Survived the feeding? This game is free and made with ❤️.<br>A small tip keeps the coffins lit!',
+    tagline: "Someone at the table drinks more than wine.",
   },
 
   masquerade: {
@@ -336,6 +340,7 @@ const THEMES = {
     tipIcon: '🎭',
     tipTitle: 'The masks come off.',
     tipBody: 'The ball is over. This game is free and made with ❤️.<br>A small tip keeps the chandeliers lit!',
+    tagline: "Behind every mask hides a secret — and some secrets are deadly.",
   },
 
   hightreason: {
@@ -399,6 +404,137 @@ const THEMES = {
     tipIcon: '🍵',
     tipTitle: 'The manor has spoken.',
     tipBody: "Scandal averted — or not. This game is free and made with ❤️.<br>A small tip keeps the kettle on!",
+    tagline: "Scandal is brewing. Someone in the manor is not who they claim.",
+  },
+
+  forest: {
+    id: 'forest',
+    landingIcon: '🧚',
+    landingTitle: 'PIXIES &<br>TROLLS',
+    landingSubtitle: "Not everyone in the forest is what they seem... 🍄",
+    traitorName: 'TROLL',
+    faithfulName: 'PIXIE',
+    traitorIcon: '🧌',
+    faithfulIcon: '🧚',
+    traitorDesc: "Blend in with the pixies. Corrupt the enchanted forest from within. One by one.",
+    faithfulDesc: "The trolls have disguised themselves. Root them out before the forest falls to darkness.",
+    lobbyTitle: 'The Forest Stirs. Find Your Grove.',
+    nightTitle: 'Under the Mushroom Ring 🍄',
+    nightIcon: '🧌',
+    nightEyebrow: 'Trolls Only',
+    nightWaiting: 'The trolls lurk in the shadows, plotting their next move...',
+    nightWaitingNote: "Sprinkle your dust and wait, little pixie. 🧚",
+    fellowLabel: 'Your Troll Band',
+    murderTitle: '🧌 Who Loses Their Wings Tonight?',
+    recruitTitle: '🍄 Corrupt a Pixie',
+    murderBanner: 'CORRUPTION NIGHT 🧌',
+    recruitBanner: 'DARK ENCHANTMENT NIGHT 🍄',
+    morningPendingTitle: 'Dawn in the Forest 🌅',
+    morningPendingSubtitle: "Pixies drifting into the clearing, shaking dew from their wings...",
+    morningArrivalText: 'fluttered into the clearing',
+    morningAbsentText: 'never emerged from the dark',
+    morningQuietTitle: 'The Forest is Safe 🌿',
+    morningQuietDesc: "Everyone emerged from the night! The trolls kept to their caves — for now.",
+    morningMurderTitle: 'A Pixie Has Vanished 🍂',
+    morningMurderDesc: "never emerged from the dark.<br>The trolls struck in the night. The forest mourns.",
+    roundTableTitle: 'The Forest Clearing',
+    roundTableSubtitle: 'Debate. Accuse. Cast them out.',
+    voteEyebrow: 'Banishment Vote 🌿',
+    banishmentLabel: 'Cast Out',
+    banishedDesc: "has been cast out of the enchanted forest. 🍄",
+    banishedMeDesc: "You've been cast out of the enchanted forest. 🍄",
+    endGameFaithfulLabel: 'All Pixies',
+    endGameTraitorLabel: 'Any Troll among you',
+    traitorWin: 'THE TROLLS WIN 🧌',
+    faithfulWin: 'THE PIXIES WIN 🧚',
+    traitorWinDesc: "The trolls corrupted the forest from within. The enchantment is broken. Darkness reigns. 🧌",
+    faithfulWinDesc: "Every last troll has been cast out! The enchanted forest is safe once more. 🧚",
+    recruitedTitle: "You've Been Corrupted! 🧌",
+    recruitedDesc: "The trolls got to you in the night. You're one of them now.<br>Try to keep your wings on straight.",
+    recruitedWitnessTitle: 'The Troll Band Grows 🧌',
+    recruitedWitnessDesc: '{name} has been corrupted. Welcome them into the shadows.',
+    fellowTraitorsLabel: 'Your Troll Band',
+    // Shield
+    shieldName: 'Fairy Ring',
+    shieldIcon: '🍄',
+    shieldWonText: 'A fairy ring quietly appeared overnight, protecting one pixie.',
+    shieldNoneText: 'No fairy ring appeared overnight.',
+    shieldBlockedDesc: "protected the pixie from the trolls!",
+    shieldNotUsedDesc: 'fairy ring unused',
+    // Game summary
+    summaryMurderedVerb: 'corrupted',
+    summaryRecruitedVerb: 'turned',
+    summaryBanishedVerb: 'cast out',
+    // Tip jar
+    tipIcon: '🧚',
+    tipTitle: "The forest has spoken.",
+    tipBody: "Pixie or troll — we hope you had a magical time! This game is free and made with ❤️.<br>A small tip keeps the enchantment going!",
+    tagline: "Not everyone fluttering around the clearing actually has wings.",
+  },
+
+  baking: {
+    id: 'baking',
+    landingIcon: '🎂',
+    landingTitle: 'THE GREAT<br>BAKE BETRAYAL',
+    landingSubtitle: "Someone in the tent is salting the competition. 🧂",
+    traitorName: 'SALTER',
+    faithfulName: 'BAKER',
+    traitorIcon: '🧂',
+    faithfulIcon: '🥐',
+    traitorDesc: "Sabotage from within. Swap the sugar. Ruin every last recipe. Claim the golden rolling pin.",
+    faithfulDesc: "Someone's been swapping salt for sugar. Root out the Salters before the final round.",
+    lobbyTitle: 'The Tent is Open. Take Your Stations.',
+    nightTitle: 'The Secret Pantry 🕯️',
+    nightIcon: '🧂',
+    nightEyebrow: 'Salters Only',
+    nightWaiting: 'The Salters are huddled in the pantry, plotting their next sabotage...',
+    nightWaitingNote: "Keep your recipes close and your salt far. 🧂",
+    fellowLabel: 'Fellow Salters',
+    murderTitle: '🧂 Who Gets Salted Tonight?',
+    recruitTitle: '🎂 Recruit a New Salter',
+    murderBanner: 'SABOTAGE NIGHT 🧂',
+    recruitBanner: 'RECRUITMENT NIGHT 🎂',
+    morningPendingTitle: 'Morning in the Tent ☀️',
+    morningPendingSubtitle: "Bakers shuffling in, flour on their aprons...",
+    morningArrivalText: 'arrived at their station',
+    morningAbsentText: 'never made it to the tent',
+    morningQuietTitle: 'All Stations Present 🥐',
+    morningQuietDesc: "Everyone made it in this morning! The Salters kept their hands clean — for now.",
+    morningMurderTitle: 'One Baker Short 😱',
+    morningMurderDesc: "never showed up to their station.<br>Looks like someone swapped more than just sugar last night.",
+    roundTableTitle: 'The Judging Table',
+    roundTableSubtitle: 'Debate. Accuse. Send someone home from the tent.',
+    voteEyebrow: 'Elimination Vote 🎂',
+    banishmentLabel: 'Sent Home',
+    banishedDesc: "has been sent home from the tent. Soggy bottom. 😬",
+    banishedMeDesc: "You've been sent home from the tent. Soggy bottom. 😬",
+    endGameFaithfulLabel: 'All Bakers',
+    endGameTraitorLabel: 'Any Salter among you',
+    traitorWin: 'THE SALTERS WIN 🧂',
+    faithfulWin: 'THE BAKERS WIN 🥐',
+    traitorWinDesc: "The Salters sabotaged every last recipe. Deliciously evil. The golden rolling pin is theirs.",
+    faithfulWinDesc: "Every last Salter has been sent home! The tent is clean. Star Bakers, all of you. 🥐",
+    recruitedTitle: "You've Been Salted! 🧂",
+    recruitedDesc: "The Salters got to you. You're one of them now.<br>Try not to oversalt anything too obviously.",
+    recruitedWitnessTitle: 'The Pantry Grows 🧂',
+    recruitedWitnessDesc: '{name} has been recruited to the dark side of the pantry. Welcome them in.',
+    fellowTraitorsLabel: 'Fellow Salters',
+    // Shield
+    shieldName: 'Protective Apron',
+    shieldIcon: '👨‍🍳',
+    shieldWonText: 'A lucky baker quietly claimed a protective apron overnight.',
+    shieldNoneText: 'No protective apron was claimed overnight.',
+    shieldBlockedDesc: "shielded the baker from sabotage!",
+    shieldNotUsedDesc: 'apron unused',
+    // Game summary
+    summaryMurderedVerb: 'sabotaged',
+    summaryRecruitedVerb: 'salted',
+    summaryBanishedVerb: 'sent home',
+    // Tip jar
+    tipIcon: '🎂',
+    tipTitle: "The Judging Table has spoken.",
+    tipBody: "Star Baker or soggy bottom? This game is free and made with ❤️.<br>A small tip keeps the oven on!",
+    tagline: "Someone in this tent has been swapping sugar for salt.",
   },
 
   pirates: {
@@ -462,13 +598,14 @@ const THEMES = {
     tipIcon: '🦜',
     tipTitle: "Voyage complete, ye salty dog. 🏴‍☠️",
     tipBody: "Made it out alive — or did ye walk the plank? This game is free and made with ❤️.<br>A small tip keeps the ship afloat, arrr!",
+    tagline: "One of yer crewmates is flying the wrong flag.",
   },
 };
 
-let currentTheme = THEMES.vampire;
+let currentTheme = THEMES.baking;
 
 function applyTheme(themeId) {
-  const theme = THEMES[themeId] || THEMES.vampire;
+  const theme = THEMES[themeId] || THEMES.baking;
   currentTheme = theme;
   document.body.dataset.theme = theme.id;
   // Update landing screen
@@ -610,7 +747,7 @@ let recruitOnTwoTraitorsCreate = true;  // allow optional recruit when traitors 
 let shieldsEnabledCreate = true;        // shield mechanic: best mini-game scorer is secretly protected
 
 // Apply default theme on page load
-applyTheme('vampire');
+applyTheme('baking');
 
 function updateTraitorDisplay() {
   document.getElementById('traitor-count-display').textContent = traitorCount;
@@ -803,14 +940,22 @@ document.getElementById('btn-traitors-up').addEventListener('click', () => {
 })();
 
 // Theme picker
+function updateThemeTagline(themeId) {
+  const taglineEl = document.getElementById('theme-tagline');
+  if (taglineEl) taglineEl.textContent = (THEMES[themeId] || {}).tagline || '';
+}
+
 document.querySelectorAll('.theme-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     selectedTheme = btn.dataset.theme;
     document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     applyTheme(selectedTheme);
+    updateThemeTagline(selectedTheme);
   });
 });
+
+updateThemeTagline('baking');
 
 document.getElementById('btn-create-game').addEventListener('click', () => {
   const name = document.getElementById('host-name').value.trim();
