@@ -94,6 +94,26 @@ Night Challenges are randomly selected each night (shuffle-bag rotation avoids r
 
 The host can enable/disable individual challenges in Advanced Settings — at least one must stay on.
 
+### 🛡️ Shields (Optional)
+
+An optional mechanic that adds a secret layer of protection to the night phase.
+
+**How it works:**
+
+- Each night, after Innocents finish the mini-game, the server silently determines a **shield winner** — the Innocent who scored highest on the Night Challenge.
+- If multiple players tied for the top score, the one who **finished first** wins the tiebreak.
+- If all players scored 0 (everyone got every question wrong), no shield is awarded.
+- The shield winner is **secret** — nobody is told, not even the winner themselves.
+- Before the morning reveal, everyone sees a hint: **"A shield was won overnight"** or **"No shield was won overnight"** — but nothing more.
+- If the hidden team targeted the shield holder that night, the **murder is silently blocked**. The shield holder walks in with everyone else as if nothing happened. Nobody ever learns who was protected.
+- Shields last one night only. A player must win again the next night to be protected again.
+- The hidden team is never eligible to win a shield — they're focused on the murder, not the mini-game.
+- At the end of the game, a full **Shield Results** history is revealed on the game over screen, showing who won each night and whether their shield was used.
+
+**Theming:** The shield is renamed per theme — a *Garlic Wreath* in Blood Court, a *Silver Talisman* in Werewolves, a *Protective Parrot* on the High Seas, a *Disco Diva Shield* for The Gays, etc.
+
+> Shields are **enabled by default**. The host can disable them in Advanced Settings.
+
 ### Other Settings
 
 | Setting | Default | Description |
@@ -148,8 +168,8 @@ Lobby -> Role Reveal -> Night -> Morning Reveal -> Round Table -> Vote -> Vote R
 
 1. **Lobby** — Host creates a game, picks a theme, sets the number of hidden players, and configures Advanced Settings (including optional Weighted Role Assignment). Others join with the 4-letter code. If Weighted mode is on, everyone rates their desire to be the bad guy (1–5) before the host starts.
 2. **Role Reveal** — Each player privately sees their role. Hidden team members see each other's names.
-3. **Night** — The hidden team secretly agrees on a target (unanimous consensus + lock-in required). Everyone else plays a Night Challenge mini-game on their phone to build the prize pool.
-4. **Morning Reveal** — Host triggers a dramatic reveal: surviving players appear one by one with a 7-second delay. The eliminated player never walks in. After everyone is accounted for, the result is shown.
+3. **Night** — The hidden team secretly agrees on a target (unanimous consensus + lock-in required). Everyone else plays a Night Challenge mini-game on their phone to build the prize pool. If **Shields** are enabled, the best-performing Innocent silently wins a shield (see below).
+4. **Morning Reveal** — If Shields are enabled, a hint is shown first ("a shield was / was not won") before the reveal begins. Then host triggers the dramatic reveal: surviving players appear one by one with a 7-second delay. The eliminated player never walks in. After everyone is accounted for, the result is shown.
 5. **Round Table** — Discuss in person. Host opens voting when ready.
 6. **Voting** — Everyone privately votes to banish someone. Host sees a live vote count.
 7. **Vote Reveal** — Votes drip in one by one with a 7-second delay and running tallies.
